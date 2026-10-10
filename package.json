@@ -2,7 +2,7 @@
   "name": "resume-pulse-extension",
   "private": true,
   "type": "module",
-  "version": "0.6.7",
+  "version": "0.6.8",
   "scripts": {
     "package": "pwsh -NoProfile -File scripts/package-release.ps1",
     "precheck": "node tests/test-feedback-performance.mjs",

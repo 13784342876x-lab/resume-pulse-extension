@@ -84,7 +84,7 @@
     {id:"eduMajor",re:/(专业名称|所学专业|主修专业|专业|major)/,get:i=>at("education",i,"major")},
     {id:"eduStart",re:/(教育开始|入学时间|入学日期|就读开始|edustart)/,get:i=>at("education",i,"start")},
     {id:"eduEnd",re:/(教育结束|毕业时间|毕业日期|就读结束|eduend)/,get:i=>at("education",i,"end")},
-    {id:"studyForm",re:/(学习形式|培养方式|是否全日制|studyform)/,get:i=>at("education",i,"studyForm")},
+    {id:"studyForm",re:/(学习形式|学习方式|教育方式|培养方式|是否全日制|studyform)/,get:i=>at("education",i,"studyForm")},
     {id:"educationType",re:/(学历性质|教育类型|educationtype)/,get:i=>at("education",i,"educationType")},
     {id:"languageName",re:/(外语|语言).*(语种|名称)|语种/,get:i=>at("languages",i,"name")},
     {id:"languageLevel",re:/(外语|语言).*(等级|级别|水平)|外语能力/,get:i=>at("languages",i,"level")},

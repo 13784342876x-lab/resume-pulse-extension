@@ -17,6 +17,8 @@ w.__RESUME_PULSE_RECORDS__=null;await run();d.querySelectorAll('input').forEach(
 d.querySelector('main').innerHTML=`<div>${field('学校名称','school')}${field('学历','level')}${field('是否专升本','up')}${field('是否有双学位','dual')}${field('是否是学生干部','leader')}${field('专业分类','majorClass')}${field('成绩（GPA）','gpa')}<div class="el-form-item"><label>就读年月</label><input id="begin" placeholder="开始时间"><input id="finish" placeholder="结束时间"></div></div>`;
 profile.education=[{school:'示例大学',level:'本科',upgraded:'否',dualDegree:'是',studentLeader:'否',majorCategoryPath:'本科 / 工学 / 计算机类',gpa:'3.87',start:'2019-09',end:'2023-06'}];
 await run();assert.equal(d.querySelector('#dual').value,'是');assert.equal(d.querySelector('#begin').value,'2019-09');assert.equal(d.querySelector('#finish').value,'2023-06');assert.equal(d.querySelector('#gpa').value,'3.87');assert.equal(d.querySelector('#leader').value,'否');
+d.querySelector('#school').closest('.el-form-item').parentElement.insertAdjacentHTML('beforeend','<div class="el-form-item"><label>学习形式</label><select id="studyForm"><option value="">请选择</option><option>全日制</option><option>业余</option></select></div>');
+profile.education[0].studyForm='业余';await run();assert.equal(d.querySelector('#studyForm').value,'业余');
 profile.education.unshift({school:'示例研究生院',level:'硕士研究生',gpa:'4.0'});
 d.querySelectorAll('input').forEach(el=>el.value='');d.querySelector('#level').value='本科';
 await run();assert.equal(d.querySelector('#school').value,'示例大学');assert.equal(d.querySelector('#gpa').value,'3.87');
