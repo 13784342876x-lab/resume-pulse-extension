@@ -9,6 +9,8 @@ const arrays = ["education","workExperience","campusExperience","projects","lang
 const schemas = {
   education: { title:"教育经历", fields:[
     ["level","学历层次","select",["","博士研究生","硕士研究生","本科","大专","高中","中专 / 中职","其他"]],
+    ["hasEducation","是否有该段学历","select",["","是","否"]],["upgraded","是否专升本","select",["","是","否"]],["dualDegree","是否有双学位","select",["","是","否"]],["studentLeader","是否学生干部","select",["","是","否"]],
+    ["majorCategoryPath","专业分类完整路径（如本科 / 工学 / 计算机类）","text"],
     ["school","学校名称","text"],["faculty","院系名称","text"],["major","专业名称","text"],
     ["majorCategory","专业类别","major-category"],["degree","学位","text"],["schoolCity","学校所在城市","region"],
     ["schoolType","学校类型","select",["","双一流","985 工程","211 工程","普通本科","高职高专","中学","境外院校","其他"]],
@@ -22,6 +24,7 @@ const schemas = {
   ]},
   workExperience: { title:"工作 / 实习经历", fields:[
     ["type","经历类型","select",["","工作","实习","项目"]],["company","单位名称","text"],["role","岗位 / 职务","text"],
+    ["companyType","单位性质","select",["","国有企业","民营企业","外资企业","合资企业","事业单位","机关","其他"]],["workType","工作性质","select",["","全职","兼职","实习","其他"]],["location","工作地区","region"],["notes","补充说明","textarea"],
     ["start","开始时间","month"],["end","结束时间","month"],["detail","主要工作与成果","textarea"]
   ]},
   campusExperience: { title:"校园经历", fields:[

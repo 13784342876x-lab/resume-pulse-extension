@@ -184,9 +184,62 @@
   ];
   const familyRoleHit=text=>{const alias=roleAliases.find(([,pattern])=>pattern.test(text));if(!alias)return null;const member=lists.family.find(item=>item.relation===alias[0]||roleAliases.find(entry=>entry[0]===alias[0])?.[1].test(item.relation||""));if(!member)return null;const fields=[[/姓名|name/,"name"],[/年龄/,"age"],[/出生|生日/,"birthday"],[/政治面貌|政治身份/,"politicalStatus"],[/工作单位|单位名称/,"workUnit"],[/职务|职业/,"position"],[/电话|手机|联系方式/,"phone"],[/与本人关系|成员关系|称谓/,"relation"]];const hit=fields.find(([pattern])=>pattern.test(text));if(!hit)return null;return{id:`family:${alias[0]}:${hit[1]}`,value:hit[1]==="age"?ageOf(member):member[hit[1]]};};
   const languageRowHit=(text,el)=>{if(el?.tagName!=="SELECT"||!/(英语能力|外语能力)/.test(text))return null;const row=el.closest("tr,.form-item,.field,.ant-form-item,.el-form-item,.layui-form-item,li,fieldset,dl")||el.parentElement;const selects=[...row.querySelectorAll("select")].filter(visible);if(selects.length<2)return null;const index=selects.indexOf(el);if(index<0)return null;const language=lists.languages.find(item=>/英语|english/i.test(item.name||""))||lists.languages[0];if(!language)return null;const optionText=selects.map(select=>[...select.options].map(option=>textOf(option)).join(" ")).join(" ");if(index===0&&/(CET|大学英语|托福|雅思|英语专业)/i.test(optionText))return{id:"languageCertificate",value:language.certificate};if(index===1)return{id:"languageScore",value:language.score||language.level};return null;};
+  // Bind a whole education/work card to one record, not one counter per label.
+  const recordKey=JSON.stringify([p.name,lists.education,lists.workExperience]);
+  const records=window.__RESUME_PULSE_RECORDS__?.key===recordKey?window.__RESUME_PULSE_RECORDS__:{key:recordKey,education:{next:0,groups:new WeakMap()},workExperience:{next:0,groups:new WeakMap()}};
+  window.__RESUME_PULSE_RECORDS__=records;
+  const assigned=new WeakMap();
+  const mappings={
+    workExperience:[[/单位性质|公司性质|企业性质/,'companyType'],[/工作性质|任职性质/,'workType'],[/单位名称|公司名称|企业名称|实习单位|工作单位/,'company'],[/职位|岗位|职务/,'role'],[/开始|起始|入职/,'start'],[/结束|截止|离职/,'end'],[/工作内容|工作描述|主要职责|工作业绩|主要工作|成果/,'detail'],[/工作地区|工作地点|工作城市/,'location'],[/补充说明|备注/,'notes']],
+    education:[[/是否.*该段学历/,'hasEducation'],[/专升本/,'upgraded'],[/双学位/,'dualDegree'],[/学生干部/,'studentLeader'],[/专业分类|专业类别|学科门类/,'majorCategory'],[/学校名称|毕业院校|就读学校|学校$/,'school'],[/学历|学历层次/,'level'],[/学位/,'degree'],[/专业/,'major'],[/院系|学院名称/,'faculty'],[/入学|开始|起始/,'start'],[/毕业时间|毕业日期|结束|截止/,'end'],[/全日制|教育方式|学习形式/,'studyForm'],[/统招|招生类别|招生类型/,'admissionType'],[/gpa|绩点|成绩/,'gpa'],[/学制/,'duration']]
+  };
+  const recordHit=el=>{
+    const local=item=>compact(labelOnly(item)+' '+(item.placeholder||'')+' '+(item.getAttribute('aria-label')||''));
+    const controls=node=>[...node.querySelectorAll('input,select,textarea')].filter(item=>item.type!=='hidden'&&visible(item));
+    let group=null,kind=null;
+    for(let node=el.parentElement;node&&node!==document.body;node=node.parentElement){
+      const items=controls(node),labels=items.map(local);
+      if(labels.some(t=>/与本人关系|亲属关系/.test(t)))return null;
+      const schools=labels.filter(t=>/学校名称|毕业院校|就读学校/.test(t)).length;
+      const companies=labels.filter(t=>/单位名称|公司名称|企业名称|实习单位/.test(t)).length;
+      if(schools===1&&labels.some(t=>/学历|专业/.test(t))){group=node;kind='education';break;}
+      if(companies===1&&labels.some(t=>/职位|岗位|职务|工作内容/.test(t))){group=node;kind='workExperience';break;}
+    }
+    if(!group)return null;
+    const items=controls(group),label=local(el);
+    let field=mappings[kind].find(([pattern])=>pattern.test(label))?.[1];
+    if(!field&&/就读年月|在校时间|起止时间|在职时间/.test(label)){
+      const row=el.closest('.el-form-item,.ant-form-item,.form-item,label')||el.parentElement;
+      const dates=controls(row);field=dates.length===2?(dates.indexOf(el)===0?'start':'end'):null;
+    }
+    if(!field)return null;
+    if(!assigned.has(group)){
+      const state=records[kind],identityField=kind==='education'?'school':'company';
+      const identity=items.find(item=>mappings[kind].find(([pattern])=>pattern.test(local(item)))?.[1]===identityField);
+      const read=item=>item.tagName==='SELECT'?textOf(item.selectedOptions[0]):isCombo(item)?comboValue(item):item.value;
+      const identityValue=identity&&!empty(identity)?compact(read(identity)):'';
+      const levelControl=kind==='education'?items.find(item=>mappings[kind].find(([pattern])=>pattern.test(local(item)))?.[1]==='level'):null;
+      const levelValue=levelControl&&!empty(levelControl)?compact(read(levelControl)):'';
+      const matches=lists[kind].map((record,index)=>({record,index})).filter(({record})=>(identityValue||levelValue)&&(!identityValue||compact(record[identityField])===identityValue)&&(!levelValue||compact(record.level)===levelValue));
+      const previous=state.groups.get(group);
+      const nonempty=Boolean(identityValue);
+      const index=matches.length===1?matches[0].index:previous&&nonempty?previous.index:identityValue||levelValue?-1:state.next;
+      assigned.set(group,index);
+      if(index>=0&&lists[kind][index])state.next=Math.max(state.next,index+1);
+    }
+    const index=assigned.get(group),record=lists[kind][index];
+    if(!record)return {id:'recordMissing',value:''};
+    let value=record[field];
+    if(field==='majorCategory')value=record.majorCategoryPath||value;
+    if(field==='workType')value=value||(record.type==='实习'?'实习':'');
+    // Persist the selection across clicks, including a reused cleared editor.
+    records[kind].groups.set(group,{index});
+    return {id:`record:${kind}:${field}`,value};
+  };
   const resolve=(text,counters,el)=>{
     const editorHit=familyEditorHit(text,el);if(editorHit)return editorHit;
     const roleHit=familyRoleHit(labelOnly(el));if(roleHit)return roleHit;
+    const record=recordHit(el);if(record)return record;
     const languageHit=languageRowHit(text,el);if(languageHit)return languageHit;
     const customHit=custom.find(x=>text.includes(compact(x.label)));if(customHit)return{id:`custom:${customHit.label}`,value:customHit.value};
     const rule=rules.find(x=>x.re.test(text));if(!rule)return null;
@@ -211,6 +264,7 @@
   const matchChoice=(items,value)=>{const target=optionToken(value);if(!target)return null;const valid=items.filter(item=>!item.disabled&&item.getAttribute?.('aria-disabled')!=='true'&&!/(请选择|请选|--)/.test(textOf(item)));const exact=valid.find(item=>optionToken(textOf(item))===target);if(exact)return exact;const synonyms={是:['有','需要','需求'],否:['无','不需要','无需'],男:['男性'],女:['女性']}[String(value)]||[];const synonym=valid.find(item=>synonyms.includes(textOf(item)));if(synonym)return synonym;if(/^\d+$/.test(target))return valid.find(item=>/^\d+$/.test(textOf(item))&&Number(textOf(item))===Number(target))||null;const shortened=value=>optionToken(value).replace(/(特别行政区|壮族自治区|回族自治区|维吾尔自治区|自治区|省|市)$/,'');const region=valid.filter(item=>{const label=shortened(textOf(item));return label.length>=2&&target.includes(label);}).sort((a,b)=>textOf(b).length-textOf(a).length);return region[0]||valid.find(item=>{const label=optionToken(textOf(item));return label.length>=2&&(label.includes(target)||target.includes(label));})||null;};
   const selectOption=(el,value)=>{
     const date=dateParts(value);if(date){const part=datePartFor(el);if(!part||date[part]===null)return null;return [...el.options].find(option=>!option.disabled&&/^\d+[年月日]?$/.test(textOf(option))&&Number(textOf(option).replace(/[年月日]/g,''))===date[part])||null;}
+    if(/^\d+(\.\d+)?$/.test(String(value))&&/学制/.test(labelOnly(el)))return [...el.options].find(option=>!option.disabled&&textOf(option).replace(/年$/,'')===String(value))||null;
     return matchChoice([...el.options].filter(option=>option.value!==''),value);
   };
   const setValue=(el,value)=>{
@@ -259,7 +313,7 @@
   const radioCounters={};for(const group of radioGroups.values()){
     if(!overwrite&&group.some(x=>x.checked))continue;const hit=resolve(fieldContext(group[0]),radioCounters,group[0]);if(!hit||!hit.value)continue;
     const target=compact(hit.value),yes=/^(是|有|需要|有需求)$/.test(String(hit.value)),no=/^(否|无|不需要|无需)$/.test(String(hit.value));
-    const choice=group.find(el=>{const option=compact([el.value,el.labels?[...el.labels].map(textOf).join(" "):"",textOf(el.parentElement)].join(" "));return option===target||option.includes(target)||(yes&&/(是|有|需要)/.test(option)&&!/(不|无)/.test(option))||(no&&/(否|无|不需要|无需)/.test(option));});
+    const choice=group.find(el=>compact(el.labels?[...el.labels].map(textOf).join(' '):textOf(el.parentElement))===target)||group.find(el=>{const option=compact([el.value,el.labels?[...el.labels].map(textOf).join(" "):"",textOf(el.parentElement)].join(" "));return option===target||(option.includes(target)&&!(target==='全日制'&&option.includes('非全日制')))||(yes&&/(是|有|需要)/.test(option)&&!/(不|无)/.test(option))||(no&&/(否|无|不需要|无需)/.test(option));});
     if(choice){choice.click();filled++;matched++;}
   }
   const manual=[...document.querySelectorAll('input[type="file"],input[type="checkbox"][required],input[type="checkbox"][name*="agree" i]')].filter(visible).length;

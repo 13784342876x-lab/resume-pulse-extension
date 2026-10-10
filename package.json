@@ -2,11 +2,11 @@
   "name": "resume-pulse-extension",
   "private": true,
   "type": "module",
-  "version": "0.6.4",
+  "version": "0.6.5",
   "scripts": {
     "package": "pwsh -NoProfile -File scripts/package-release.ps1",
     "version:set": "node scripts/bump-version.mjs",
-    "check": "node tests/test-ocr-module.mjs && node tests/test-autofill.mjs && node tests/test-family-cards.mjs && node tests/test-dates-dropdowns.mjs && node tests/test-resume-parser.mjs && node tests/test-region-data.mjs && node tests/test-options-ui.mjs && node tests/test-panel.mjs && node --check background.js && node --check panel.js && node --check options.js && node --check resume-parser.js && node --check region-data.js"
+    "check": "node tests/test-ocr-module.mjs && node tests/test-autofill.mjs && node tests/test-family-cards.mjs && node tests/test-record-cards.mjs && node tests/test-dates-dropdowns.mjs && node tests/test-resume-parser.mjs && node tests/test-region-data.mjs && node tests/test-options-ui.mjs && node tests/test-panel.mjs && node --check background.js && node --check panel.js && node --check options.js && node --check resume-parser.js && node --check region-data.js"
   },
   "dependencies": {
     "@tesseract.js-data/chi_sim": "^1.0.0",

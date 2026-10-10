@@ -1,0 +1,23 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {JSDOM} from 'jsdom';
+const code=fs.readFileSync(new URL('../autofill.js',import.meta.url),'utf8');
+const field=(label,id)=>`<div class="el-form-item"><label>${label}</label><input id="${id}"></div>`;
+const card=id=>`<div class="card">${field('单位名称','company'+id)}${field('职位名称','role'+id)}${field('单位性质','nature'+id)}${field('工作性质','type'+id)}${field('开始时间','start'+id)}${field('结束时间','end'+id)}${field('工作内容','detail'+id)}${field('工作地区','area'+id)}${field('补充说明','notes'+id)}</div>`;
+const dom=new JSDOM(`<main><h2>工作/实习经历</h2>${card(1)}</main>`,{runScripts:'outside-only',pretendToBeVisual:true});
+const w=dom.window,d=w.document;w.CSS={escape:String};
+const profile={workExperience:[{company:'甲公司',role:'研发实习',type:'实习',companyType:'民营企业',start:'2023-01',end:'2023-03',detail:'甲内容',location:'北京市',notes:'甲备注'},{company:'乙公司',role:'测试实习',start:'2024-02',end:'2024-05',detail:'乙内容'}]};
+const run=async()=>{w.__RESUME_PULSE_PROFILE__=profile;return w.eval(code);};
+await run();assert.equal(d.querySelector('#company1').value,'甲公司');assert.equal(d.querySelector('#type1').value,'实习');assert.equal(d.querySelector('#notes1').value,'甲备注');
+await run();assert.equal(d.querySelector('#company1').value,'甲公司');
+d.querySelector('main').insertAdjacentHTML('beforeend',card(2));await run();assert.equal(d.querySelector('#company2').value,'乙公司');assert.equal(d.querySelector('#start2').value,'2024-02');assert.equal(d.querySelector('#detail2').value,'乙内容');
+d.querySelector('main').innerHTML=card(3);await run();assert.equal(d.querySelector('#company3').value,'');
+// Reset per-profile state and reuse the same editor after saving its first row.
+w.__RESUME_PULSE_RECORDS__=null;await run();d.querySelectorAll('input').forEach(el=>el.value='');await run();assert.equal(d.querySelector('#company3').value,'乙公司');
+d.querySelector('main').innerHTML=`<div>${field('学校名称','school')}${field('学历','level')}${field('是否专升本','up')}${field('是否有双学位','dual')}${field('是否是学生干部','leader')}${field('专业分类','majorClass')}${field('成绩（GPA）','gpa')}<div class="el-form-item"><label>就读年月</label><input id="begin" placeholder="开始时间"><input id="finish" placeholder="结束时间"></div></div>`;
+profile.education=[{school:'示例大学',level:'本科',upgraded:'否',dualDegree:'是',studentLeader:'否',majorCategoryPath:'本科 / 工学 / 计算机类',gpa:'3.87',start:'2019-09',end:'2023-06'}];
+await run();assert.equal(d.querySelector('#dual').value,'是');assert.equal(d.querySelector('#begin').value,'2019-09');assert.equal(d.querySelector('#finish').value,'2023-06');assert.equal(d.querySelector('#gpa').value,'3.87');assert.equal(d.querySelector('#leader').value,'否');
+profile.education.unshift({school:'示例研究生院',level:'硕士研究生',gpa:'4.0'});
+d.querySelectorAll('input').forEach(el=>el.value='');d.querySelector('#level').value='本科';
+await run();assert.equal(d.querySelector('#school').value,'示例大学');assert.equal(d.querySelector('#gpa').value,'3.87');
+console.log('Work card additions, reused editor, exhausted records and education fields/level selection passed');w.close();
