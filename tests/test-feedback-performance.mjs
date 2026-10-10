@@ -1,0 +1,15 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import {JSDOM} from 'jsdom';
+const code=fs.readFileSync(new URL('../autofill.js',import.meta.url),'utf8');
+const dom=new JSDOM(`<main>${Array.from({length:40},(_,i)=>`<div class="field"><label for="f${i}">姓名</label><input id="f${i}"></div>`).join('')}<label>民族<input id="ethnic" readonly role="combobox" aria-controls="choices"></label><div id="choices" role="listbox" hidden><div role="option">汉族</div></div></main>`,{runScripts:'outside-only',pretendToBeVisual:true});
+const w=dom.window,d=w.document;w.CSS={escape:String};
+let clones=0;const original=w.Node.prototype.cloneNode;w.Node.prototype.cloneNode=function(...args){clones++;return original.apply(this,args);};
+const combo=d.querySelector('#ethnic');combo.addEventListener('click',()=>d.querySelector('#choices').hidden=false);d.querySelector('[role="option"]').addEventListener('click',()=>{combo.value='汉族';d.querySelector('#choices').hidden=true;});
+w.__RESUME_PULSE_PROFILE__={name:'示例人',ethnicity:'汉族'};
+const start=Date.now();await w.eval(code);
+assert.ok(clones<1500,`repeated label cloning regression: ${clones}`);
+assert.match(d.querySelector('#f0').style.outline,/#12b879/);
+assert.match(combo.style.outline,/#12b879/);
+assert.ok(w.__RESUME_PULSE_HIGHLIGHTS__.has(combo));
+console.log(JSON.stringify({labelClones:clones,elapsedMs:Date.now()-start,ordinaryAndComboHighlight:true}));w.close();
