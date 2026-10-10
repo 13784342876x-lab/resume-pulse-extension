@@ -213,6 +213,7 @@
     if(!group)return null;
     const items=controls(group),label=local(el);
     let field=mappings[kind].find(([pattern])=>pattern.test(label))?.[1];
+    if(field==='gpa'&&!/gpa|绩点/.test(label))return {id:'ambiguousScore',value:''};
     if(!field&&/就读年月|在校时间|起止时间|在职时间/.test(label)){
       const row=el.closest('.el-form-item,.ant-form-item,.form-item,label')||el.parentElement;
       const dates=controls(row);field=dates.length===2?(dates.indexOf(el)===0?'start':'end'):null;
@@ -244,8 +245,16 @@
   const resolve=(text,counters,el)=>{
     const editorHit=familyEditorHit(text,el);if(editorHit)return editorHit;
     const roleHit=familyRoleHit(labelOnly(el));if(roleHit)return roleHit;
-    const record=recordHit(el);if(record)return record;
+    const own=compact(labelOnly(el)+' '+(el.placeholder||'')+' '+(el.getAttribute('aria-label')||''));
+    const languageContext=own+' '+compact(precedingHeading(el));
+    // Language scores must never fall through to GPA or general certificates.
+    if(!/gpa|绩点/.test(own)&&/成绩|分数|得分|score/.test(own)&&/英语|外语|语言|cet|雅思|托福|ielts|toefl/i.test(languageContext)){
+      const exam=languageContext.match(/cet[46]|雅思|托福|ielts|toefl/i)?.[0];
+      const candidates=lists.languages.filter(item=>exam?compact(item.certificate).includes(exam)||(/雅思|ielts/.test(exam)&&/雅思|ielts/.test(compact(item.certificate)))||(/托福|toefl/.test(exam)&&/托福|toefl/.test(compact(item.certificate))):/英语/.test(languageContext)?/英语|english/i.test(item.name||''):true);
+      return {id:'languageScore',value:candidates.length===1?candidates[0].score:''};
+    }
     const languageHit=languageRowHit(text,el);if(languageHit)return languageHit;
+    const record=recordHit(el);if(record)return record;
     const customHit=custom.find(x=>text.includes(compact(x.label)));if(customHit)return{id:`custom:${customHit.label}`,value:customHit.value};
     const rule=rules.find(x=>x.re.test(text));if(!rule)return null;
     let index=counters[rule.id]||0;

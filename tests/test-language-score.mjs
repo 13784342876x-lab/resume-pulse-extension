@@ -1,0 +1,11 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import {JSDOM} from 'jsdom';
+const code=fs.readFileSync(new URL('../autofill.js',import.meta.url),'utf8');
+const dom=new JSDOM('<main><h2>教育经历</h2><label>学校名称<input id="school"></label><label>学历<input id="level"></label><label>成绩（GPA）<input id="gpa"></label><label>英语等级成绩<input id="english"></label><h2>英语能力</h2><label>成绩<input id="score"></label></main>',{runScripts:'outside-only',pretendToBeVisual:true});
+const w=dom.window,d=w.document;w.CSS={escape:String};
+const profile={education:[{school:'示例大学',level:'本科',gpa:'3.87'}],languages:[{name:'英语',certificate:'大学英语六级（CET-6）',score:'568'}]};
+const run=async()=>{w.__RESUME_PULSE_PROFILE__=profile;w.__RESUME_PULSE_OPTIONS__={overwrite:true};await w.eval(code);};
+await run();assert.equal(d.querySelector('#gpa').value,'3.87');assert.equal(d.querySelector('#english').value,'568');assert.equal(d.querySelector('#score').value,'568');
+profile.languages[0].score='';d.querySelector('#english').value='';d.querySelector('#score').value='';await run();assert.equal(d.querySelector('#english').value,'');assert.equal(d.querySelector('#score').value,'');
+console.log('Language score isolated from GPA; missing score never borrows education data');w.close();
