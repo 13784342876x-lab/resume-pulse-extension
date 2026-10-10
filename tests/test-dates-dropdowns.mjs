@@ -1,0 +1,24 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import {JSDOM} from 'jsdom';
+import {parseResumeDocument} from '../resume-parser.js';
+const code=fs.readFileSync(new URL('../autofill.js',import.meta.url),'utf8');
+const opts=(count,suffix='')=>Array.from({length:count},(_,i)=>`<option value="${i+1}">${i+1}${suffix}</option>`).join('');
+const dom=new JSDOM(`<table><tr><td>出生日期</td><td><select id="year"><option value="">请选择</option><option value="y">2000年</option></select><select id="month"><option value="">请选择</option>${opts(12,'月')}</select><select id="day"><option value="">请选择</option>${opts(31,'日')}</select></td></tr><tr><td>户口所在地</td><td><select id="province"><option value="">请选择</option><option value="13">河北</option></select><select id="city" disabled><option value="">请选择</option></select></td></tr><tr><td>民族</td><td><select id="ethnic"><option value="">请选择</option><option value="01">汉</option><option value="02">蒙古族</option></select></td></tr></table><label>出生日期<input id="date" type="date"></label><label>民族<input id="customEthnic" readonly role="combobox" aria-controls="ethnic-options"></label><div id="ethnic-options" role="listbox" hidden><div role="option">汉族</div><div role="option">蒙古族</div></div>`,{url:'https://example.test',runScripts:'outside-only',pretendToBeVisual:true});
+const w=dom.window,d=w.document;w.CSS={escape:String};
+d.querySelector('#province').addEventListener('change',()=>w.setTimeout(()=>{const city=d.querySelector('#city');city.disabled=false;city.innerHTML='<option value="">请选择</option><option value="1301">石家庄</option>';},350));
+d.querySelector('#customEthnic').addEventListener('click',()=>{d.querySelector('#ethnic-options').hidden=false;});
+d.querySelectorAll('[role="option"]').forEach(option=>option.addEventListener('click',()=>{d.querySelector('#customEthnic').value=option.textContent;d.querySelector('#ethnic-options').hidden=true;}));
+w.__RESUME_PULSE_PROFILE__={birthday:'2000-01-16',hukouLocation:'河北省石家庄市',ethnicity:'汉族'};
+await w.eval(code);
+for(const [id,value] of Object.entries({year:'y',month:'1',day:'16',province:'13',city:'1301',ethnic:'01',date:'2000-01-16',customEthnic:'汉族'}))assert.equal(d.getElementById(id).value,value,id);
+assert.equal(parseResumeDocument({text:'姓名：测试人\n出生日期：2000年1月16日'}).parsed.birthday,'2000-01-16');
+// Incomplete birthdays must not acquire an invented day.
+d.querySelector('#date').value='';w.__RESUME_PULSE_PROFILE__={birthday:'2000-01'};await w.eval(code);assert.equal(d.querySelector('#date').value,'');
+d.body.insertAdjacentHTML('beforeend','<label>民族<input id="searchEthnic" role="combobox" aria-controls="search-list"></label><div id="search-list" role="listbox" hidden></div>');
+const search=d.querySelector('#searchEthnic'),list=d.querySelector('#search-list');let selected=false;
+search.addEventListener('click',()=>list.hidden=false);
+search.addEventListener('input',()=>{if(search.value==='蒙古族')w.setTimeout(()=>{list.innerHTML='<div role="option">蒙古族</div>';list.firstChild.addEventListener('click',()=>{selected=true;list.hidden=true;});},120);});
+w.__RESUME_PULSE_PROFILE__={ethnicity:'蒙古族'};await w.eval(code);assert.ok(selected,'Searchable dropdown must click a real option');
+console.log('Dates, delayed region dropdowns, coded ethnicity, searchable/readonly comboboxes and birthday import passed');
+w.close();

@@ -1,0 +1,15 @@
+node_modules/
+tmp/
+dist/
+*.traineddata
+*.log
+.env
+.env.*
+!.env.example
+*.pdf
+*.docx
+*.zip
+*-简历脉冲.json
+.DS_Store
+Thumbs.db
+

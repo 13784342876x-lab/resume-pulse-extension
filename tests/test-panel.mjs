@@ -1,0 +1,11 @@
+import fs from "node:fs";
+import assert from "node:assert/strict";
+import {JSDOM} from "jsdom";
+const dom=new JSDOM(`<!doctype html><body><form><label>姓名<input></label><label>性别<select></select></label></form></body>`,{url:"https://career.example.com/apply",runScripts:"outside-only",pretendToBeVisual:true});
+dom.window.chrome={runtime:{sendMessage:async message=>message.type==="resume-pulse-fill"?{ok:true,stats:{filled:3,skipped:0,manual:0,total:2}}:{ok:true}},storage:{local:{get:async()=>({profiles:[{id:"li",data:{name:"林晓雨",education:[{level:"硕士研究生",school:"示例工业大学"}]}},{id:"chen",data:{name:"陈予安",education:[]}}],activeProfileId:"li",profile:{name:"林晓雨"}}),set:async()=>{}},onChanged:{addListener(){}}}};
+const code=fs.readFileSync(new URL("../panel.js",import.meta.url),"utf8");dom.window.eval(code);await new Promise(resolve=>setTimeout(resolve,20));
+const host=dom.window.document.getElementById("resume-pulse-floating-host"),root=host.shadowRoot,panel=root.querySelector(".panel");
+assert.ok(root.querySelector(".bubble"));assert.equal(panel.hidden,false);assert.equal(root.querySelectorAll(".profile-select option").length,2);assert.equal(root.querySelector(".profile-select").value,"li");
+root.querySelector(".close").click();assert.equal(panel.hidden,true);root.querySelector(".bubble").click();assert.equal(panel.hidden,false);
+root.querySelector(".overwrite input").checked=true;root.querySelector(".fill").click();await new Promise(resolve=>setTimeout(resolve,10));assert.match(root.querySelector(".result").textContent,/覆盖\/填写 3 个字段/);
+console.log(JSON.stringify({bubble:true,profiles:2,overwrite:true}));

@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>简历脉冲 · 个人档案管理</title>
+  <link rel="stylesheet" href="ui.css" />
+</head>
+<body class="options-body">
+  <header class="options-topbar">
+    <div class="brand"><img src="mark.svg" alt="" /><div><strong>简历脉冲</strong><small>RESUME PULSE</small></div></div>
+    <div class="save-state"><i></i><span id="saveState">敏感资料仅保存在当前浏览器</span></div>
+    <select class="profile-switch" id="profileSwitch" aria-label="当前简历档案"></select>
+    <button class="sample-btn" id="newProfileBtn" type="button">＋ 新建档案</button>
+    <button class="sample-btn danger" id="deleteProfileBtn" type="button">删除档案</button>
+    <button class="sample-btn" id="exportBtn" type="button">备份 JSON</button>
+    <button class="sample-btn" id="importBtn" type="button">导入简历</button>
+    <button class="sample-btn" id="sampleBtn" type="button">✦ 填入示例</button>
+    <button class="save-btn" id="saveBtn" type="button">保存档案</button>
+  </header>
+  <main class="options-layout">
+    <aside class="options-aside">
+      <span>PERSONNEL PROFILE</span>
+      <h1>一次建档，<br />重复网申不再重复。</h1>
+      <p>适配常见企业、国企与事业单位字段。插件只在你点击“一键填写”后读取当前页面，且永远不会替你提交。</p>
+      <nav class="section-nav">
+        <a href="#import">导入解析</a><a href="#basic">基本与户籍</a><a href="#contact">联系信息</a><a href="#education">教育经历</a><a href="#work-experience">工作 / 实习</a><a href="#campus">校园经历</a><a href="#projects">项目经历</a><a href="#languages">外语能力</a><a href="#awards">奖惩与竞赛</a><a href="#academics">证书与学术</a><a href="#family">家庭成员</a><a href="#statements">申报信息</a><a href="#custom">自定义字段</a>
+      </nav>
+      <div class="privacy-box"><b>✓</b><div><strong>隐私优先</strong><p>资料使用 Chrome Storage 保存在本机，不发送到我们的服务器；身份证号等字段均为可选。</p></div></div>
+    </aside>
+
+    <form id="profileForm" class="profile-form">
+      <section class="form-section import-section" id="import">
+        <div class="section-title"><b>00</b><div><h2>从已有简历提取资料</h2><p>支持 PDF、DOCX、PNG/JPG/WEBP、TXT、Markdown 和本插件 JSON 备份；所有解析均在本地完成</p></div></div>
+        <div class="import-drop" id="importDrop"><strong>选择或拖入简历文件</strong><span>识别后只会预填档案，请检查准确性再保存</span><button class="sample-btn" id="chooseResumeBtn" type="button">选择文件</button></div>
+        <label class="import-merge"><input type="checkbox" id="mergeImport" /> 保留当前档案中未被简历识别的手工字段（默认关闭可避免混入上一位测试人员资料）</label>
+        <div class="import-review" id="importReview" hidden><div><strong id="importFileName"></strong><span id="importSummary"></span></div><button type="button" id="dismissImport">关闭结果</button></div>
+      </section>
+      <section class="form-section" id="basic">
+        <div class="section-title"><b>01</b><div><h2>基本与户籍信息</h2><p>国企、事业单位和标准人事表单常见字段</p></div></div>
+        <div class="form-grid">
+          <label><span>姓名 *</span><input name="name" autocomplete="name" placeholder="你的姓名" required /></label>
+          <label><span>曾用名</span><input name="formerName" placeholder="没有可不填" /></label>
+          <label><span>性别</span><select name="gender"><option value="">不填写</option><option>男</option><option>女</option><option>其他</option></select></label>
+          <label><span>出生日期</span><div class="date-picker" data-static-date="birthday" data-day="true"></div><input name="birthday" type="hidden" /></label>
+          <label><span>出生地</span><div class="region-picker" data-region-field="birthPlace"></div><input name="birthPlace" type="hidden" /></label>
+          <label><span>民族</span><select name="ethnicity" id="ethnicitySelect"></select></label>
+          <label><span>国籍</span><select name="nationality"><option value="">不填写</option><option>中国</option><option>中国香港</option><option>中国澳门</option><option>中国台湾</option><option>其他</option></select></label>
+          <label><span>政治面貌</span><select name="politicalStatus"><option value="">不填写</option><option>中共党员</option><option>中共预备党员</option><option>共青团员</option><option>群众</option><option>民主党派</option><option>其他</option></select></label>
+          <label><span>入党 / 入团时间</span><div class="date-picker" data-static-date="politicalDate"></div><input name="politicalDate" type="hidden" /></label>
+          <label><span>身高（cm）</span><input name="height" type="number" min="100" max="230" placeholder="例如：175" /></label>
+          <label><span>体重（kg）</span><input name="weight" type="number" min="30" max="250" placeholder="例如：65" /></label>
+          <label><span>婚姻状况</span><select name="maritalStatus"><option value="">不填写</option><option>未婚</option><option>已婚</option><option>离异</option><option>丧偶</option></select></label>
+          <label><span>健康状况</span><select name="healthStatus"><option value="">不填写</option><option>健康</option><option>良好</option><option>一般</option><option>较差</option><option>残疾</option><option>其他</option></select></label>
+          <label><span>证件类型</span><select name="idType"><option value="">不填写</option><option>居民身份证</option><option>护照</option><option>港澳居民来往内地通行证</option><option>台湾居民来往大陆通行证</option><option>其他</option></select></label>
+          <label><span>证件号码（可选）</span><input name="idNumber" autocomplete="off" placeholder="敏感信息，可不保存在插件中" /></label>
+          <label><span>户口性质</span><select name="householdType"><option value="">不填写</option><option>城镇</option><option>农村</option><option>集体户口</option><option>其他</option></select></label>
+          <label><span>户口所在地</span><div class="region-picker" data-region-field="hukouLocation"></div><input name="hukouLocation" type="hidden" /></label>
+          <label><span>是否有北京户口落户需求</span><select name="beijingHukouNeed"><option value="">不填写</option><option>是</option><option>否</option></select></label>
+          <label><span>籍贯</span><div class="region-picker" data-region-field="nativePlace"></div><input name="nativePlace" type="hidden" /></label>
+          <label><span>生源地</span><div class="region-picker" data-region-field="studentOrigin"></div><input name="studentOrigin" type="hidden" /></label>
+          <label><span>人员类别</span><select name="candidateType"><option value="">不填写</option><option>应届毕业生</option><option>往届毕业生</option><option>社会人员</option><option>留学回国人员</option><option>退役军人</option><option>其他</option></select></label>
+          <label><span>档案所在地</span><input name="archiveLocation" placeholder="人事档案保管单位或地区" /></label>
+        </div>
+      </section>
+
+      <section class="form-section" id="contact">
+        <div class="section-title"><b>02</b><div><h2>联系与地址信息</h2><p>请确保在整个招聘周期内可用</p></div></div>
+        <div class="form-grid">
+          <label><span>手机号码 *</span><input name="phone" autocomplete="tel" placeholder="138 0000 0000" /></label>
+          <label><span>电子邮箱 *</span><input name="email" type="email" autocomplete="email" placeholder="name@example.com" /></label>
+          <label class="wide"><span>现居住地 / 常住地址 / 通信地址</span><input name="currentResidence" placeholder="请填写完整地址" /></label>
+          <label><span>邮政编码</span><input name="postalCode" inputmode="numeric" placeholder="例如：200000" /></label>
+          <label><span>个人主页</span><input name="website" type="url" placeholder="作品集 / GitHub / 个人网站" /></label>
+          <label><span>紧急联系人姓名</span><input name="emergencyName" placeholder="联系人姓名" /></label>
+          <label><span>与本人关系</span><select name="emergencyRelation"><option value="">不填写</option><option>父亲</option><option>母亲</option><option>配偶</option><option>兄弟</option><option>姐妹</option><option>子女</option><option>其他</option></select></label>
+          <label><span>紧急联系方式</span><input name="emergencyPhone" inputmode="tel" placeholder="联系人手机号码" /></label>
+          <label><span>微信号（可选）</span><input name="wechat" autocomplete="off" placeholder="招聘单位要求时填写" /></label>
+        </div>
+      </section>
+
+      <section class="form-section" id="education">
+        <div class="section-title"><b>03</b><div><h2>教育经历</h2><p>按最高学历到高中排序；请至少补充到高中阶段</p></div></div>
+        <div class="order-tip">填写顺序：博士 / 硕士 / 本科 / 大专 / 高中。使用上下按钮调整顺序。</div>
+        <div id="educationList" class="dynamic-list"></div>
+        <button class="add-row" type="button" data-add="education">＋ 添加一段教育经历</button>
+      </section>
+
+      <section class="form-section" id="work-experience">
+        <div class="section-title"><b>04</b><div><h2>工作及实习经历</h2><p>单位、岗位、时间和主要成果分别维护</p></div></div>
+        <div id="workExperienceList" class="dynamic-list"></div><button class="add-row" type="button" data-add="workExperience">＋ 添加工作 / 实习经历</button>
+      </section>
+
+      <section class="form-section" id="campus">
+        <div class="section-title"><b>05</b><div><h2>校园经历</h2><p>学生组织、社团、志愿服务和校内任职经历</p></div></div>
+        <div id="campusExperienceList" class="dynamic-list"></div><button class="add-row" type="button" data-add="campusExperience">＋ 添加校园经历</button>
+      </section>
+
+      <section class="form-section" id="projects">
+        <div class="section-title"><b>06</b><div><h2>项目经历</h2><p>课程、科研、业务和个人项目单独维护</p></div></div>
+        <div id="projectsList" class="dynamic-list"></div><button class="add-row" type="button" data-add="projects">＋ 添加项目经历</button>
+      </section>
+
+      <section class="form-section" id="languages">
+        <div class="section-title"><b>07</b><div><h2>外语能力</h2><p>支持英语等级考试双下拉框及成绩字段</p></div></div>
+        <div id="languagesList" class="dynamic-list"></div><button class="add-row" type="button" data-add="languages">＋ 添加外语能力</button>
+      </section>
+
+      <section class="form-section" id="awards">
+        <div class="section-title"><b>08</b><div><h2>奖惩情况与竞赛经历</h2><p>奖惩记录与竞赛获奖分别维护</p></div></div>
+        <div class="subsection"><h3>奖惩情况</h3><div id="awardsList" class="dynamic-list"></div><button class="add-row" type="button" data-add="awards">＋ 添加奖惩记录</button></div>
+        <div class="subsection"><h3>竞赛经历</h3><div id="competitionsList" class="dynamic-list"></div><button class="add-row" type="button" data-add="competitions">＋ 添加竞赛记录</button></div>
+      </section>
+
+      <section class="form-section" id="academics">
+        <div class="section-title"><b>09</b><div><h2>证书与学术成果</h2><p>证书资格与论文、专著、专利分别维护</p></div></div>
+        <div class="subsection"><h3>证书与资格</h3><div id="certificatesList" class="dynamic-list"></div><button class="add-row" type="button" data-add="certificates">＋ 添加证书</button></div>
+        <div class="subsection"><h3>论文 / 专著 / 专利</h3><div id="publicationsList" class="dynamic-list"></div><button class="add-row" type="button" data-add="publications">＋ 添加成果</button></div>
+      </section>
+
+      <section class="form-section" id="family">
+        <div class="section-title"><b>10</b><div><h2>家庭成员情况</h2><p>常用于国企、事业单位的亲属关系申报</p></div></div>
+        <div id="familyList" class="dynamic-list"></div>
+        <button class="add-row" type="button" data-add="family">＋ 添加家庭成员</button>
+      </section>
+
+      <section class="form-section" id="work">
+        <div class="section-title"><b>11</b><div><h2>职业状态与自我评价</h2><p>保留整体就业状态和自我评价</p></div></div>
+        <div class="form-grid">
+          <label><span>目前就业状态</span><select name="employmentStatus"><option value="">不填写</option><option>在职</option><option>离职</option><option>在校</option><option>待业</option><option>自由职业</option><option>其他</option></select></label>
+          <label class="wide"><span>个人优势 / 自我评价</span><textarea name="summary" placeholder="经验、专长、代表成果和独特优势"></textarea></label>
+        </div>
+      </section>
+
+      <section class="form-section" id="statements">
+        <div class="section-title"><b>12</b><div><h2>个人情况与申报信息</h2><p>对应部分国企页面中的长文本及渠道字段</p></div></div>
+        <div class="form-grid">
+          <label class="wide"><span>个人情况报告</span><textarea name="personalReport" placeholder="按招聘单位要求说明个人有关情况"></textarea></label>
+          <label class="wide"><span>请说明本人的能力 / 胜任能力</span><textarea name="abilityStatement" placeholder="结合岗位要求说明能力、经验和代表成果"></textarea></label>
+          <label><span>谋职方式 / 应聘渠道</span><select name="jobSeekingMethod"><option value="">不填写</option><option>校园招聘</option><option>社会招聘</option><option>官方网站</option><option>招聘平台</option><option>内部推荐</option><option>猎头推荐</option><option>现场招聘会</option><option>其他</option></select></label>
+          <label><span>特别提示 / 补充说明</span><input name="specialNotes" placeholder="没有可留空" /></label>
+        </div>
+        <div class="manual-note"><b>需手动完成：</b>照片、简历附件上传以及“诚信承诺”勾选。浏览器不允许扩展静默选择本机文件，承诺也必须由本人阅读后确认。</div>
+      </section>
+
+      <section class="form-section" id="custom">
+        <div class="section-title"><b>13</b><div><h2>自定义字段</h2><p>不同单位的特殊字段可在这里添加，插件会按字段名匹配</p></div></div>
+        <div id="customFieldsList" class="dynamic-list"></div>
+        <button class="add-row" type="button" data-add="customFields">＋ 添加自定义字段</button>
+      </section>
+
+      <div class="form-bottom"><button class="save-btn large" type="submit">保存档案</button></div>
+    </form>
+  </main>
+  <input id="fileInput" type="file" accept=".pdf,.docx,.png,.jpg,.jpeg,.webp,.txt,.md,.json,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg,image/webp,text/plain,application/json" hidden />
+  <div class="toast" id="toast" role="status"></div>
+  <script src="vendor/mammoth.browser.min.js"></script>
+  <script type="module" src="options.js"></script>
+</body>
+</html>

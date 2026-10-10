@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>简历脉冲</title>
+  <link rel="stylesheet" href="ui.css" />
+</head>
+<body class="popup-body">
+  <main class="popup-card">
+    <header class="brand"><img src="mark.svg" alt="" /><div><strong>简历脉冲</strong><small>RESUME PULSE</small></div><span class="local-pill">仅本地</span></header>
+    <section class="profile-brief" id="profileBrief">
+      <span class="avatar" id="avatar">简</span>
+      <div><strong id="profileName">尚未建立档案</strong><p id="profileRole">先录入资料，再开始网申</p></div>
+      <button id="editBtn" type="button" aria-label="编辑简历">编辑</button>
+    </section>
+    <section class="pulse-box">
+      <span class="spark">✦</span>
+      <div><strong>准备填写当前网页</strong><p>自动匹配个人档案、教育经历、家庭成员和履历等常见字段。</p></div>
+    </section>
+    <button class="fill-btn" id="fillBtn" type="button"><span>一键填写当前页面</span><b>→</b></button>
+    <div class="result" id="result" aria-live="polite"></div>
+    <footer><span>不会读取密码，也不会自动提交</span><button id="settingsBtn" type="button">管理简历资料</button></footer>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>
