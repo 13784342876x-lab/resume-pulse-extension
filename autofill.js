@@ -139,27 +139,44 @@
   const familyState=window.__RESUME_PULSE_FAMILY_STATE__?.key===familyKey?window.__RESUME_PULSE_FAMILY_STATE__:{key:familyKey,next:0,groups:new WeakMap()};
   window.__RESUME_PULSE_FAMILY_STATE__=familyState;
   const familyAssignments=new WeakMap();
-  const familyFields=[[/与本人关系|成员关系|亲属关系|称谓|^关系$/,"relation"],[/姓名|name/i,"name"],[/年龄/,"age"],[/出生|生日/,"birthday"],[/政治面貌|政治身份/,"politicalStatus"],[/工作单位|单位名称/,"workUnit"],[/职务|职业/,"position"],[/电话|手机|联系方式/,"phone"]];
+  const familyFields=[[/与本人关系|成员关系|亲属关系|称谓|^关系$/,"relation"],[/姓名|name/i,"name"],[/年龄/,"age"],[/出生|生日/,"birthday"],[/政治面貌|政治身份/,"politicalStatus"],[/工作单位.*职务|单位及职务/,"unitAndPosition"],[/工作单位|单位名称/,"workUnit"],[/职务|职业/,"position"],[/电话|手机|联系方式/,"phone"],[/居住.*国家|居住国/,"residenceCountry"],[/备注/,"notes"]];
   const labelOnly=el=>{const node=el.closest('label,tr,.form-item,.field,.ant-form-item,.el-form-item,.layui-form-item')||el.parentElement;const copy=node?.cloneNode(true);copy?.querySelectorAll('input,select,textarea,button').forEach(item=>item.remove());return compact([...(el.labels||[])].map(label=>{const copy=label.cloneNode(true);copy.querySelectorAll('input,select,textarea').forEach(item=>item.remove());return textOf(copy);}).join(' ')+' '+textOf(copy)+' '+(el.getAttribute('aria-label')||''));};
   const familyEditorHit=(text,el)=>{
-    const label=labelOnly(el),group=el.closest('[role="dialog"],dialog,fieldset,form,table')||el.parentElement;
-    if(!/(家庭|亲属|社会关系)/.test(text+textOf(group?.querySelector('legend,h1,h2,h3'))+precedingHeading(group)))return null;
-    const field=familyFields.find(([pattern])=>pattern.test(label))?.[1];if(!field)return null;
+    const label=labelOnly(el);
+    // Modern forms use nested divs rather than a form/table. Find the smallest
+    // member card with its own relationship and name, excluding sidebar text.
+    const controlsIn=node=>[...node.querySelectorAll('input,select,textarea,[role="combobox"],.el-select,.ant-select')].filter(item=>!item.disabled&&item.type!=='hidden'&&visible(item)&&!(item.closest(comboSelector)&&item.closest(comboSelector)!==item));
+    const fieldOf=item=>familyFields.find(([pattern])=>pattern.test(labelOnly(item)))?.[1];
+    let group=null;
+    for(let node=el.parentElement;node&&node!==document.body;node=node.parentElement){
+      const items=controlsIn(node),names=items.filter(item=>fieldOf(item)==='name');
+      if(names.length===1&&items.some(item=>fieldOf(item)==='relation')){group=node;break;}
+    }
+    group ||= el.closest('[role="dialog"],dialog,fieldset,form,table')||el.parentElement;
+    const structural=controlsIn(group).some(item=>fieldOf(item)==='relation');
+    if(!structural&&!/(家庭|亲属|社会关系)/.test(text+textOf(group?.querySelector('legend,h1,h2,h3'))+precedingHeading(group)))return null;
+    const field=fieldOf(el);if(!field)return {id:'familyUnknown',value:''};
     const role=familyRoleHit(label);if(role)return role;
+    if(roleAliases.some(([,pattern])=>pattern.test(label)))return {id:'familyMissingRole',value:''};
     if(!familyAssignments.has(group)){
-      const controls=[...group.querySelectorAll('input,select,textarea')].filter(item=>!item.disabled&&item.type!=='hidden'&&visible(item));
+      const controls=controlsIn(group);
       const identity=controls.filter(item=>['name','relation'].includes(familyFields.find(([pattern])=>pattern.test(labelOnly(item)))?.[1]));
       // Repeated rows remain handled by the ordinary per-field counters.
-      if(identity.filter(item=>familyFields.find(([pattern])=>pattern.test(labelOnly(item)))?.[1]==='name').length>1)return null;
+      if(identity.filter(item=>fieldOf(item)==='name').length>1)return {id:'familyAmbiguous',value:''};
       const previous=familyState.groups.get(group);
       const hasIdentity=identity.some(item=>!empty(item));
-      const matched=lists.family.findIndex(member=>identity.some(item=>{const key=familyFields.find(([pattern])=>pattern.test(labelOnly(item)))?.[1];return !empty(item)&&compact(item.tagName==='SELECT'?textOf(item.selectedOptions[0]):item.value)===compact(member[key]);}));
+      const relation=identity.find(item=>fieldOf(item)==='relation'&&!empty(item));
+      const read=item=>compact(item.tagName==='SELECT'?textOf(item.selectedOptions[0]):isCombo(item)?comboValue(item):item.value);
+      const candidates=lists.family.map((member,index)=>({member,index})).filter(({member})=>relation?read(relation)===compact(member.relation):identity.some(item=>fieldOf(item)==='name'&&!empty(item)&&read(item)===compact(member.name)));
+      const matched=candidates.length===1?candidates[0].index:-1;
       const explicit=Number.isInteger(options.familyIndex)&&options.familyIndex>=0&&options.familyIndex<lists.family.length?options.familyIndex:null;
-      const index=explicit!==null?explicit:matched>=0?matched:previous&&hasIdentity?previous.index:familyState.next;
+      // A selected relationship is authoritative, even if a stale name belongs
+      // to the applicant. Unknown/duplicate relationships must never fall back.
+      const index=relation?matched:explicit!==null?explicit:matched>=0?matched:previous&&hasIdentity?previous.index:hasIdentity?-1:familyState.next;
       familyAssignments.set(group,{index,controls});
     }
     const assignment=familyAssignments.get(group),member=lists.family[assignment.index];
-    return {id:`familyEditor:${field}`,value:member?(field==='age'?ageOf(member):member[field]):'',familyGroup:group,familyIndex:assignment.index};
+    return {id:`familyEditor:${field}`,value:member?(field==='age'?ageOf(member):field==='unitAndPosition'?[member.workUnit,member.position].filter(Boolean).join(' / '):member[field]):'',familyGroup:group,familyIndex:assignment.index};
   };
   const ageOf=member=>{if(member?.age)return member.age;const match=String(member?.birthday||"").match(/((?:19|20)\d{2})(?:[-/](\d{1,2}))?/);if(!match)return "";const now=new Date(),month=Number(match[2]||1);return String(now.getFullYear()-Number(match[1])-(now.getMonth()+1<month?1:0));};
   const roleAliases=[
