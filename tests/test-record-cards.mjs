@@ -20,4 +20,11 @@ await run();assert.equal(d.querySelector('#dual').value,'是');assert.equal(d.qu
 profile.education.unshift({school:'示例研究生院',level:'硕士研究生',gpa:'4.0'});
 d.querySelectorAll('input').forEach(el=>el.value='');d.querySelector('#level').value='本科';
 await run();assert.equal(d.querySelector('#school').value,'示例大学');assert.equal(d.querySelector('#gpa').value,'3.87');
-console.log('Work card additions, reused editor, exhausted records and education fields/level selection passed');w.close();
+const projectCard=id=>`<section>${field('项目名称','pn'+id)}${field('项目角色','pr'+id)}${field('所在单位','po'+id)}<div class="el-form-item"><label>团队规模</label><select id="pt${id}"><option value="">请选择团队规模</option><option>1-5人</option></select></div><div class="el-form-item"><label>起止时间</label><input id="ps${id}"><input id="pe${id}"></div>${field('项目介绍','pd'+id)}${field('项目职责','px'+id)}</section>`;
+d.querySelector('main').innerHTML=projectCard(1);
+profile.projects=[{name:'示例项目甲',role:'研究员',start:'2025-10',end:'2026-10',detail:'旧版项目描述',organization:'示例实验室',teamSize:'1-5人',responsibilities:'负责测试验证'},{name:'示例项目乙',role:'开发者',detail:'第二项目介绍'}];
+d.querySelector('#pn1').value='示例项目甲';d.querySelector('#pe1').value='2026-04';
+w.__RESUME_PULSE_OPTIONS__={overwrite:true};await run();
+assert.equal(d.querySelector('#pr1').value,'研究员');assert.equal(d.querySelector('#po1').value,'示例实验室');assert.equal(d.querySelector('#pt1').value,'1-5人');assert.equal(d.querySelector('#ps1').value,'2025-10');assert.equal(d.querySelector('#pe1').value,'2026-10');assert.equal(d.querySelector('#pd1').value,'旧版项目描述');assert.equal(d.querySelector('#px1').value,'负责测试验证');
+d.querySelector('main').insertAdjacentHTML('beforeend',projectCard(2));await run();assert.equal(d.querySelector('#pn2').value,'示例项目乙');assert.equal(d.querySelector('#pr2').value,'开发者');assert.equal(d.querySelector('#px2').value,'');
+console.log('Work/education/project cards, record selection, split dates and legacy project descriptions passed');w.close();

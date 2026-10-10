@@ -31,7 +31,7 @@ const schemas = {
     ["organization","学校 / 组织名称","text"],["role","职务 / 角色","text"],["start","开始时间","month"],["end","结束时间","month"],["detail","主要工作与成果","textarea"]
   ]},
   projects: { title:"项目经历", fields:[
-    ["name","项目名称","text"],["role","项目角色","text"],["start","开始时间","month"],["end","结束时间","month"],["detail","项目描述与成果","textarea"]
+    ["name","项目名称","text"],["role","项目角色","text"],["organization","所在单位","text"],["teamSize","团队规模（填写人数或网站对应区间）","text"],["start","开始时间","month"],["end","结束时间","month"],["detail","项目介绍 / 描述与成果","textarea"],["responsibilities","项目职责（本人承担的具体工作）","textarea"]
   ]},
   languages: { title:"外语能力", fields:[
     ["name","语种","select",["","英语","日语","俄语","法语","德语","西班牙语","韩语","其他"]],["level","熟练程度","select",["","母语","精通","熟练","良好","一般"]],["certificate","考试 / 证书","select",["","大学英语四级（CET-4）","大学英语六级（CET-6）","英语专业四级","英语专业八级","托福（TOEFL）","雅思（IELTS）","其他"]],["score","成绩","text"],["oral","口语能力","select",["","精通","熟练","良好","一般"]],["writing","读写能力","select",["","精通","熟练","良好","一般"]]

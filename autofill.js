@@ -185,11 +185,12 @@
   const familyRoleHit=text=>{const alias=roleAliases.find(([,pattern])=>pattern.test(text));if(!alias)return null;const member=lists.family.find(item=>item.relation===alias[0]||roleAliases.find(entry=>entry[0]===alias[0])?.[1].test(item.relation||""));if(!member)return null;const fields=[[/姓名|name/,"name"],[/年龄/,"age"],[/出生|生日/,"birthday"],[/政治面貌|政治身份/,"politicalStatus"],[/工作单位|单位名称/,"workUnit"],[/职务|职业/,"position"],[/电话|手机|联系方式/,"phone"],[/与本人关系|成员关系|称谓/,"relation"]];const hit=fields.find(([pattern])=>pattern.test(text));if(!hit)return null;return{id:`family:${alias[0]}:${hit[1]}`,value:hit[1]==="age"?ageOf(member):member[hit[1]]};};
   const languageRowHit=(text,el)=>{if(el?.tagName!=="SELECT"||!/(英语能力|外语能力)/.test(text))return null;const row=el.closest("tr,.form-item,.field,.ant-form-item,.el-form-item,.layui-form-item,li,fieldset,dl")||el.parentElement;const selects=[...row.querySelectorAll("select")].filter(visible);if(selects.length<2)return null;const index=selects.indexOf(el);if(index<0)return null;const language=lists.languages.find(item=>/英语|english/i.test(item.name||""))||lists.languages[0];if(!language)return null;const optionText=selects.map(select=>[...select.options].map(option=>textOf(option)).join(" ")).join(" ");if(index===0&&/(CET|大学英语|托福|雅思|英语专业)/i.test(optionText))return{id:"languageCertificate",value:language.certificate};if(index===1)return{id:"languageScore",value:language.score||language.level};return null;};
   // Bind a whole education/work card to one record, not one counter per label.
-  const recordKey=JSON.stringify([p.name,lists.education,lists.workExperience]);
-  const records=window.__RESUME_PULSE_RECORDS__?.key===recordKey?window.__RESUME_PULSE_RECORDS__:{key:recordKey,education:{next:0,groups:new WeakMap()},workExperience:{next:0,groups:new WeakMap()}};
+  const recordKey=JSON.stringify([p.name,lists.education,lists.workExperience,lists.projects]);
+  const records=window.__RESUME_PULSE_RECORDS__?.key===recordKey?window.__RESUME_PULSE_RECORDS__:{key:recordKey,education:{next:0,groups:new WeakMap()},workExperience:{next:0,groups:new WeakMap()},projects:{next:0,groups:new WeakMap()}};
   window.__RESUME_PULSE_RECORDS__=records;
   const assigned=new WeakMap();
   const mappings={
+    projects:[[/项目名称|项目名|项目标题/,'name'],[/项目职责|具体职责|承担.*工作|负责.*工作/,'responsibilities'],[/项目角色|担任.*角色|担任.*职务|项目职务/,'role'],[/所在单位|所属单位|所属公司|单位名称/,'organization'],[/团队规模|团队人数|项目人数/,'teamSize'],[/开始|起始|启动/,'start'],[/结束|截止|完成时间/,'end'],[/项目介绍|项目描述|项目概况|项目内容|项目成果|背景意义/,'detail']],
     workExperience:[[/单位性质|公司性质|企业性质/,'companyType'],[/工作性质|任职性质/,'workType'],[/单位名称|公司名称|企业名称|实习单位|工作单位/,'company'],[/职位|岗位|职务/,'role'],[/开始|起始|入职/,'start'],[/结束|截止|离职/,'end'],[/工作内容|工作描述|主要职责|工作业绩|主要工作|成果/,'detail'],[/工作地区|工作地点|工作城市/,'location'],[/补充说明|备注/,'notes']],
     education:[[/是否.*该段学历/,'hasEducation'],[/专升本/,'upgraded'],[/双学位/,'dualDegree'],[/学生干部/,'studentLeader'],[/专业分类|专业类别|学科门类/,'majorCategory'],[/学校名称|毕业院校|就读学校|学校$/,'school'],[/学历|学历层次/,'level'],[/学位/,'degree'],[/专业/,'major'],[/院系|学院名称/,'faculty'],[/入学|开始|起始/,'start'],[/毕业时间|毕业日期|结束|截止/,'end'],[/全日制|教育方式|学习形式/,'studyForm'],[/统招|招生类别|招生类型/,'admissionType'],[/gpa|绩点|成绩/,'gpa'],[/学制/,'duration']]
   };
@@ -202,6 +203,8 @@
       if(labels.some(t=>/与本人关系|亲属关系/.test(t)))return null;
       const schools=labels.filter(t=>/学校名称|毕业院校|就读学校/.test(t)).length;
       const companies=labels.filter(t=>/单位名称|公司名称|企业名称|实习单位/.test(t)).length;
+      const projects=labels.filter(t=>/项目名称|项目名|项目标题/.test(t)).length;
+      if(projects===1&&labels.some(t=>/项目角色|项目职责|项目介绍|项目描述|团队规模/.test(t))){group=node;kind='projects';break;}
       if(schools===1&&labels.some(t=>/学历|专业/.test(t))){group=node;kind='education';break;}
       if(companies===1&&labels.some(t=>/职位|岗位|职务|工作内容/.test(t))){group=node;kind='workExperience';break;}
     }
@@ -214,7 +217,7 @@
     }
     if(!field)return null;
     if(!assigned.has(group)){
-      const state=records[kind],identityField=kind==='education'?'school':'company';
+      const state=records[kind],identityField=kind==='education'?'school':kind==='projects'?'name':'company';
       const identity=items.find(item=>mappings[kind].find(([pattern])=>pattern.test(local(item)))?.[1]===identityField);
       const read=item=>item.tagName==='SELECT'?textOf(item.selectedOptions[0]):isCombo(item)?comboValue(item):item.value;
       const identityValue=identity&&!empty(identity)?compact(read(identity)):'';
