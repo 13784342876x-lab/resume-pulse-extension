@@ -19,7 +19,7 @@
     return "";
   };
   const fieldContext=el=>{
-    const labels=el.labels?[...el.labels].map(labelText).join(" "):"";
+    const labels=(el.labels?[...el.labels].map(labelText).join(" "):"")||labelText(el.closest('label'));
     const byFor=el.id?textOf(document.querySelector(`label[for="${CSS.escape(el.id)}"]`)):"";
     const row=el.closest("tr"),cell=el.closest("td,th");
     const rowChildren=row?[...row.children]:[];
@@ -266,11 +266,11 @@
   };
   const layoutCapable=document.documentElement.getClientRects().length>0;
   const visible=el=>{if(!el||el.closest('[hidden],[aria-hidden="true"]'))return false;for(let node=el;node;node=node.parentElement){const style=getComputedStyle(node);if(style.display==='none'||style.visibility==='hidden')return false;}return !layoutCapable||el.getClientRects().length>0;};
-  const comboSelector='[role="combobox"],.el-select,.ant-select,.el-cascader';
-  const isCombo=el=>el.tagName!=='SELECT'&&(el.matches(comboSelector)||Boolean(el.closest('.el-select,.ant-select,.el-cascader')));
+  const comboSelector='[role="combobox"],[aria-haspopup="listbox"],.el-select,.ant-select,.el-cascader,.ivu-select,.next-select,.semi-select,.arco-select';
+  const isCombo=el=>el.tagName!=='SELECT'&&(el.matches(comboSelector)||Boolean(el.closest(comboSelector)));
   const scan=()=>[...document.querySelectorAll(`input,textarea,select,${comboSelector}`)].filter(el=>!el.disabled&&el.getAttribute('aria-disabled')!=='true'&&(!el.readOnly||isCombo(el))&&el.type!=="hidden"&&!['password','file','submit','button','reset','checkbox','radio'].includes(el.type)&&visible(el)&&!(el.closest(comboSelector)&&el.closest(comboSelector)!==el)&&!(el.matches('[role="combobox"]')&&el.parentElement?.closest('.el-select,.ant-select,.el-cascader')));
   let eligible=scan();
-  const comboValue=el=>{const selected=el.querySelector('.ant-select-selection-item,.el-select__selected-item:not(.is-placeholder),.el-input__inner');return String(el.value||selected?.value||textOf(selected)||'').trim();};
+  const comboValue=el=>{const selected=el.querySelector('.ant-select-selection-item,.el-select__selected-item:not(.is-placeholder),.el-input__inner,.ivu-select-selected-value,.next-select-values,.semi-select-selection-text,.arco-select-view-value,input');return String(el.value||selected?.value||textOf(selected)||'').trim();};
   const empty=el=>el.tagName==="SELECT"?(el.value===''||/(请选择|请选|选择|select|--)/i.test(textOf(el.options[el.selectedIndex]))):isCombo(el)?!comboValue(el)||/^(请选择|选择|请选)/.test(comboValue(el)):String(el.value||"").trim()==="";
   const dateParts=value=>{const match=String(value).trim().match(/^(\d{4})[年./-](\d{1,2})(?:[月./-](\d{1,2}))?[日月]?$/);if(!match)return null;const year=Number(match[1]),month=Number(match[2]),day=match[3]?Number(match[3]):null;if(month<1||month>12||day!==null&&(day<1||day>new Date(year,month,0).getDate()))return null;return {year,month,day};};
   const datePartFor=el=>{const hint=[el.name,el.id,el.getAttribute('aria-label'),el.placeholder].join(' ').toLowerCase();if(/year|年份|出生年/.test(hint))return 'year';if(/month|月份|出生月/.test(hint))return 'month';if(/day|日份|出生日/.test(hint)&&!/birthday/.test(hint))return 'day';if(el.tagName!=='SELECT')return null;const labels=[...el.options].map(textOf).filter(text=>!/(选择|--)/.test(text));if(labels.some(text=>/^\d{4}年?$/.test(text)))return 'year';if(labels.some(text=>/^\d{1,2}月$/.test(text)))return 'month';if(labels.some(text=>/^\d{1,2}日$/.test(text)))return 'day';const group=el.closest('tr,label,.form-item,.field,.ant-form-item,.el-form-item')||el.parentElement;const selects=[...group.querySelectorAll('select')];const yearIndex=selects.findIndex(item=>[...item.options].some(option=>/^\d{4}年?$/.test(textOf(option))));if(yearIndex>=0){const offset=selects.indexOf(el)-yearIndex;return ['year','month','day'][offset]||null;}return null;};
@@ -284,9 +284,9 @@
   const highlights=window.__RESUME_PULSE_HIGHLIGHTS__||(window.__RESUME_PULSE_HIGHLIGHTS__=new Map());
   const highlight=el=>{
     let entry=highlights.get(el);
-    if(!entry){entry={outline:el.style.getPropertyValue('outline'),priority:el.style.getPropertyPriority('outline'),offset:el.style.outlineOffset};highlights.set(el,entry);}
-    clearTimeout(entry.timer);el.style.outlineOffset='2px';el.style.setProperty('outline','2px solid #12b879','important');
-    entry.timer=setTimeout(()=>{el.style.setProperty('outline',entry.outline,entry.priority);el.style.outlineOffset=entry.offset;highlights.delete(el);},8000);
+    if(!entry){entry={outline:el.style.getPropertyValue('outline'),priority:el.style.getPropertyPriority('outline'),offset:el.style.outlineOffset,shadow:el.style.getPropertyValue('box-shadow'),shadowPriority:el.style.getPropertyPriority('box-shadow')};highlights.set(el,entry);}
+    clearTimeout(entry.timer);el.style.outlineOffset='-2px';el.style.setProperty('outline','2px solid #12b879','important');el.style.setProperty('box-shadow','inset 0 0 0 2px #12b879','important');
+    entry.timer=setTimeout(()=>{el.style.setProperty('outline',entry.outline,entry.priority);el.style.outlineOffset=entry.offset;el.style.setProperty('box-shadow',entry.shadow,entry.shadowPriority);highlights.delete(el);},12000);
   };
   const setValue=(el,value)=>{
     if(value===undefined||value===null||String(value).trim()==="")return false;
@@ -298,20 +298,21 @@
   const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   const fillCombo=async(el,value)=>{
     if(!value)return false;
-    const listSelector='[role="listbox"],.el-select-dropdown,.ant-select-dropdown,.el-cascader__dropdown';
+    const listSelector='[role="listbox"],.el-select-dropdown,.ant-select-dropdown,.el-cascader__dropdown,.ivu-select-dropdown,.next-overlay-wrapper,.semi-select-option-list,.arco-select-dropdown';
     const before=new Set([...document.querySelectorAll(listSelector)].filter(visible));
     const input=el.matches('input')?el:el.querySelector('input');const original=input?.value||'';let searched=false;
-    (input||el).click();let picked=false;
+    const trigger=el.querySelector('.ivu-select-selection,.next-select-inner,.ant-select-selector,.arco-select-view')||input||el;
+    trigger.dispatchEvent(new MouseEvent('mousedown',{bubbles:true}));trigger.dispatchEvent(new MouseEvent('mouseup',{bubbles:true}));trigger.click();let picked=false;
     const used=new Set();
     for(let step=0;step<4;step++){
       let choice=null;
       for(let attempt=0;attempt<8&&!choice;attempt++){
-        await pause(100);
+        if(attempt)await pause(100);
         const owners=[el,input,el.querySelector('[role="combobox"]')].filter(Boolean);
         const ids=owners.flatMap(node=>[node.getAttribute('aria-controls'),node.getAttribute('aria-owns')]).filter(Boolean).join(' ').split(/\s+/);
         const linked=ids.map(id=>document.getElementById(id)).filter(visible);
         const popups=linked.length?linked:[...document.querySelectorAll(listSelector)].filter(node=>visible(node)&&(!before.has(node)||el.contains(node)));
-        const choices=popups.flatMap(node=>[...node.querySelectorAll('[role="option"],.el-select-dropdown__item,.ant-select-item-option,.el-cascader-node')]).filter(node=>visible(node)&&!used.has(node)&&!node.classList.contains('is-disabled'));
+        const choices=popups.flatMap(node=>[...node.querySelectorAll('[role="option"],.el-select-dropdown__item,.ant-select-item-option,.el-cascader-node,.ivu-select-item,.next-menu-item,.semi-select-option,.arco-select-option')]).filter(node=>visible(node)&&!used.has(node)&&!node.classList.contains('is-disabled')&&!node.classList.contains('ivu-select-item-disabled'));
         choice=matchChoice(choices,value);
         if(!choice&&attempt===2&&!searched&&input&&!input.readOnly&&!el.matches('.el-cascader')){
           const query=String(value).match(/^.+?(?:省|自治区|特别行政区)/)?.[0]||String(value);
@@ -319,7 +320,7 @@
         }
       }
       if(!choice)break;
-      used.add(choice);choice.click();picked=true;
+      used.add(choice);choice.dispatchEvent(new MouseEvent('mousedown',{bubbles:true}));choice.click();picked=true;
       if(!el.matches('.el-cascader'))break;
     }
     // Only option selection counts as filled; typing search text alone is not a selection.
@@ -330,7 +331,13 @@
   let filled=0,skipped=0,matched=0;const filledElements=new WeakSet(),matchedElements=new WeakSet(),skippedElements=new WeakSet();
   const attemptedCombos=new WeakSet();
   const runPass=async()=>{labelCache=new WeakMap();controlCache=new WeakMap();eligible=scan();const counters={};for(const el of eligible){const hit=resolve(fieldContext(el),counters,el);if(!hit||filledElements.has(el))continue;if(!matchedElements.has(el)){matched++;matchedElements.add(el);}if(!overwrite&&!empty(el)){if(!skippedElements.has(el)){skipped++;skippedElements.add(el);}continue;}const combo=isCombo(el);if(combo&&attemptedCombos.has(el))continue;if(combo)attemptedCombos.add(el);if(combo?await fillCombo(el,hit.value):setValue(el,hit.value)){filled++;filledElements.add(el);if(hit.familyGroup){familyState.groups.set(hit.familyGroup,{index:hit.familyIndex});familyState.next=Math.max(familyState.next,hit.familyIndex+1);}}}};
-  await runPass();await pause(250);await runPass();await pause(500);await runPass();await pause(750);await runPass();
+  await runPass();
+  for(const delay of [250,500,750]){
+    const pendingNative=eligible.some(el=>matchedElements.has(el)&&!filledElements.has(el)&&!skippedElements.has(el)&&!isCombo(el));
+    const pendingDisabled=[...document.querySelectorAll('select:disabled,input:disabled')].some(visible);
+    if(!pendingNative&&!pendingDisabled)break;
+    await pause(delay);await runPass();
+  }
   const radioGroups=new Map();document.querySelectorAll('input[type="radio"]:not(:disabled)').forEach(el=>{if(!visible(el))return;const key=el.name||`__${el.id}`;if(!radioGroups.has(key))radioGroups.set(key,[]);radioGroups.get(key).push(el);});
   const radioCounters={};for(const group of radioGroups.values()){
     if(!overwrite&&group.some(x=>x.checked))continue;const hit=resolve(fieldContext(group[0]),radioCounters,group[0]);if(!hit||!hit.value)continue;
@@ -341,5 +348,6 @@
   const manual=[...document.querySelectorAll('input[type="file"],input[type="checkbox"][required],input[type="checkbox"][name*="agree" i]')].filter(visible).length;
   // Keep feedback visible after slow dropdowns finish, not just while filling.
   for(const el of eligible)if(filledElements.has(el))highlight(el);
-  return {filled,skipped,matched,total:eligible.length,manual};
+  const missing=eligible.filter(el=>matchedElements.has(el)&&!filledElements.has(el)&&!skippedElements.has(el)).length;
+  return {filled,skipped,matched,total:eligible.length,manual,unfilled:missing,unrecognized:eligible.filter(el=>!matchedElements.has(el)).length};
 })()
