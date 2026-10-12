@@ -18,7 +18,26 @@
     }
     return "";
   };
+  const localLabel=el=>{
+    if(el.type==='radio'){
+      const cell=el.closest('td,th'),group=el.closest('.form-item,.field,.ant-form-item,.el-form-item');
+      if(cell?.previousElementSibling)return compact(labelText(cell.previousElementSibling));
+      if(group)return compact(labelText(group));
+    }
+    const explicit=[...(el.labels||[])].map(labelText).join(' ')||labelText(el.closest('label'))||el.getAttribute('aria-label')||el.getAttribute('data-label');
+    if(explicit)return compact(explicit);
+    const cell=el.closest('td,th');
+    if(cell?.previousElementSibling&&!cell.previousElementSibling.querySelector('input,select,textarea'))return compact(labelText(cell.previousElementSibling));
+    const group=el.closest('.form-item,.field,.ant-form-item,.el-form-item,.layui-form-item');
+    if(group)return compact(labelText(group));
+    for(const sibling of [el.previousElementSibling,el.parentElement?.previousElementSibling]){
+      if(sibling&&!sibling.matches('input,select,textarea')&&!sibling.querySelector('input,select,textarea')&&textOf(sibling).length<100)return compact(labelText(sibling));
+    }
+    return '';
+  };
   const fieldContext=el=>{
+    const direct=localLabel(el);
+    if(direct)return compact(direct+' '+precedingHeading(el));
     const labels=(el.labels?[...el.labels].map(labelText).join(" "):"")||labelText(el.closest('label'));
     const byFor=el.id?textOf(document.querySelector(`label[for="${CSS.escape(el.id)}"]`)):"";
     const row=el.closest("tr"),cell=el.closest("td,th");
@@ -256,7 +275,8 @@
     const languageHit=languageRowHit(text,el);if(languageHit)return languageHit;
     const record=recordHit(el);if(record)return record;
     const customHit=custom.find(x=>text.includes(compact(x.label)));if(customHit)return{id:`custom:${customHit.label}`,value:customHit.value};
-    const rule=rules.find(x=>x.re.test(text));if(!rule)return null;
+    const direct=localLabel(el);
+    const rule=rules.find(x=>x.re.test(direct))||rules.find(x=>x.re.test(text)&&!(x.id==='summary'&&!/个人优势|自我评价|个人简介|自我介绍|个人总结|summary|aboutme/.test(direct)));if(!rule)return null;
     let index=counters[rule.id]||0;
     if(/Birthday|birthday|Start$|End$|Date$/.test(rule.id)&&el.tagName==='SELECT'){
       const group=el.closest('tr,label,.form-item,.field,.ant-form-item,.el-form-item')||el.parentElement;
@@ -290,6 +310,7 @@
   };
   const setValue=(el,value)=>{
     if(value===undefined||value===null||String(value).trim()==="")return false;
+    if(/出生日期|出生年月|生日/.test(localLabel(el))&&!dateParts(value))return false;
     if(el.tagName==="SELECT"){const option=selectOption(el,value);if(!option)return false;const setter=Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value')?.set;setter?setter.call(el,option.value):el.value=option.value;}
     else{let final=String(value).trim();const date=dateParts(final);if(date){const part=datePartFor(el);if(part){if(date[part]===null)return false;final=String(date[part]);}else{if(el.type==='date'&&date.day===null)return false;const separator=/yyyy\/|yyyy\//i.test(el.placeholder||'')?'/':/yyyy\./i.test(el.placeholder||'')?'.':'-';final=[String(date.year),String(date.month).padStart(2,'0'),...(date.day!==null&&el.type!=='month'?[String(date.day).padStart(2,'0')]:[])].join(separator);}}const proto=el.tagName==="TEXTAREA"?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;const setter=Object.getOwnPropertyDescriptor(proto,"value")?.set;setter?setter.call(el,final):el.value=final;if(el.value!==final)return false;}
     for(const type of ["input","change","blur"])el.dispatchEvent(new Event(type,{bubbles:true}));
