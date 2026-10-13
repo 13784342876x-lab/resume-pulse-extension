@@ -12,6 +12,7 @@
     for(let depth=0;node&&depth<5;depth++,node=node.parentElement){
       let previous=node.previousElementSibling;
       for(let i=0;previous&&i<4;i++,previous=previous.previousElementSibling){
+        if(/^(父亲|母亲|配偶|家庭关系)$/.test(textOf(previous)))return textOf(previous);
         const heading=previous.matches?.("h1,h2,h3,h4,h5,legend,.title,[class*='title'],[class*='Title']")?previous:previous.querySelector?.("h1,h2,h3,h4,h5,legend,.title,[class*='title'],[class*='Title']");
         if(heading&&textOf(heading))return textOf(heading);
       }
@@ -161,7 +162,7 @@
   let labelCache=new WeakMap(),controlCache=new WeakMap();
   const cachedControls=(node,kind,build)=>{let entry=controlCache.get(node);if(!entry){entry={};controlCache.set(node,entry);}return entry[kind]||(entry[kind]=build());};
   const familyFields=[[/与本人关系|成员关系|亲属关系|称谓|^关系$/,"relation"],[/姓名|name/i,"name"],[/年龄/,"age"],[/出生|生日/,"birthday"],[/政治面貌|政治身份/,"politicalStatus"],[/工作单位.*职务|单位及职务/,"unitAndPosition"],[/工作单位|单位名称/,"workUnit"],[/职务|职业/,"position"],[/电话|手机|联系方式/,"phone"],[/居住.*国家|居住国/,"residenceCountry"],[/备注/,"notes"]];
-  const labelOnly=el=>{if(labelCache.has(el))return labelCache.get(el);const node=el.closest('label,tr,.form-item,.field,.ant-form-item,.el-form-item,.layui-form-item')||el.parentElement;const copy=node?.cloneNode(true);copy?.querySelectorAll('input,select,textarea,button').forEach(item=>item.remove());const value=compact([...(el.labels||[])].map(label=>{const copy=label.cloneNode(true);copy.querySelectorAll('input,select,textarea').forEach(item=>item.remove());return textOf(copy);}).join(' ')+' '+textOf(copy)+' '+(el.getAttribute('aria-label')||''));labelCache.set(el,value);return value;};
+  const labelOnly=el=>{if(labelCache.has(el))return labelCache.get(el);const value=localLabel(el);labelCache.set(el,value);return value;};
   const familyEditorHit=(text,el)=>{
     const label=labelOnly(el);
     // Modern forms use nested divs rather than a form/table. Find the smallest
@@ -215,6 +216,8 @@
     workExperience:[[/单位性质|公司性质|企业性质/,'companyType'],[/工作性质|任职性质/,'workType'],[/单位名称|公司名称|企业名称|实习单位|工作单位/,'company'],[/职位|岗位|职务/,'role'],[/开始|起始|入职/,'start'],[/结束|截止|离职/,'end'],[/工作内容|工作描述|主要职责|工作业绩|主要工作|成果/,'detail'],[/工作地区|工作地点|工作城市/,'location'],[/补充说明|备注/,'notes']],
     education:[[/是否.*该段学历/,'hasEducation'],[/专升本/,'upgraded'],[/双学位/,'dualDegree'],[/学生干部/,'studentLeader'],[/专业分类|专业类别|学科门类/,'majorCategory'],[/学校名称|毕业院校|就读学校|学校$/,'school'],[/学历|学历层次/,'level'],[/学位/,'degree'],[/专业/,'major'],[/院系|学院名称/,'faculty'],[/入学|开始|起始/,'start'],[/毕业时间|毕业日期|结束|截止/,'end'],[/全日制|教育方式|学习形式/,'studyForm'],[/统招|招生类别|招生类型/,'admissionType'],[/gpa|绩点|成绩/,'gpa'],[/学制/,'duration']]
   };
+  mappings.education.unshift([/学位证书.*号|学位证.*号/,'degreeCertificateNumber'],[/学历证书.*号|毕业证.*号/,'educationCertificateNumber'],[/绩点制|绩点满分|gpa满分/,'gpaScale'],[/研究方向|研究课题|研究.*课题/,'researchTopic'],[/学历形式/,'studyForm'],[/院校中文名称/,'school']);
+  familyFields.unshift([/职位|岗位/,'position'],[/地址|住址/,'address']);
   const recordHit=el=>{
     const local=item=>compact(labelOnly(item)+' '+(item.placeholder||'')+' '+(item.getAttribute('aria-label')||''));
     const controls=node=>cachedControls(node,'record',()=>[...node.querySelectorAll('input,select,textarea')].filter(item=>item.type!=='hidden'&&visible(item)));
@@ -262,6 +265,15 @@
     return {id:`record:${kind}:${field}`,value};
   };
   const resolve=(text,counters,el)=>{
+    const fieldLabel=localLabel(el),heading=compact(precedingHeading(el));
+    const familyHeading=/^(父亲|母亲|配偶)$/.test(heading)?heading:null;
+    if(familyHeading){
+      const member=lists.family.find(item=>compact(item.relation)===familyHeading);
+      const field=familyFields.find(([pattern])=>pattern.test(fieldLabel))?.[1];
+      return {id:'familyHeading',value:member&&field?(field==='age'?ageOf(member):field==='unitAndPosition'?[member.workUnit,member.position].filter(Boolean).join(' / '):member[field]):''};
+    }
+    // Never fall through from a certificate number to a degree/education label.
+    if(/(学位|学历|毕业).*证.*(号|编码)/.test(fieldLabel))return recordHit(el)||{id:'educationCertificateMissing',value:''};
     const editorHit=familyEditorHit(text,el);if(editorHit)return editorHit;
     const roleHit=familyRoleHit(labelOnly(el));if(roleHit)return roleHit;
     const own=compact(labelOnly(el)+' '+(el.placeholder||'')+' '+(el.getAttribute('aria-label')||''));

@@ -19,7 +19,7 @@ const schemas = {
     ["start","入学时间","date-select"],["end","毕业时间","date-select"],["range","起止时间（自动计算）","range"],
     ["studyForm","学习形式（教育方式）","select",["","全日制","非全日制","函授","业余","脱产","自考","网络教育","开放教育","在职教育","其他"]],
     ["admissionType","招生类别","select",["","统招","单招","专升本","定向","委培","保送","自主招生","其他"]],
-    ["gpa","成绩绩点","number"],["majorRank","专业排名（前 %）","select",["","1","3","5","10","20","30","50","100"]],
+    ["gpa","成绩绩点","number"],["gpaScale","绩点制 / 满分（如 4、5）","text"],["researchTopic","研究方向及课题","textarea"],["degreeCertificateNumber","学位证书编号","text"],["educationCertificateNumber","学历 / 毕业证书编号","text"],["majorRank","专业排名（前 %）","select",["","1","3","5","10","20","30","50","100"]],
     ["jointTraining","是否联合培养","select",["","是","否"]]
   ]},
   workExperience: { title:"工作 / 实习经历", fields:[
@@ -49,6 +49,7 @@ const schemas = {
     ["type","成果类型","select",["","论文","专著","专利","软件著作权","研究报告","其他"]],["title","题目 / 名称","text"],["venue","期刊 / 出版社 / 授权单位","text"],["authorRank","作者排序","text"],["date","发表 / 授权时间","month"],["identifier","DOI / ISBN / 专利号","text"]
   ]},
   family: { title:"家庭成员", fields:[
+    ["address","地址 / 住址","text"],
     ["relation","与本人关系","select",["","父亲","母亲","配偶","丈夫","妻子","儿子","女儿","兄弟","姐妹","祖父","祖母","外祖父","外祖母","其他"]],["name","姓名","text"],["birthday","出生年月","month"],["age","年龄","number"],["politicalStatus","政治面貌","select",["","中共党员","中共预备党员","共青团员","群众","民主党派","其他"]],["workUnit","工作单位","text"],["position","职务 / 职业","text"],["phone","联系电话","text"]
   ]},
   customFields: { title:"自定义字段", fields:[

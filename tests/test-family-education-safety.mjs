@@ -1,0 +1,11 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';import {JSDOM} from 'jsdom';
+const code=fs.readFileSync(new URL('../autofill.js',import.meta.url),'utf8');
+const field=(label,id)=>`<label>${label}<input id="${id}"></label>`;
+const dom=new JSDOM(`<section><h2>教育背景</h2>${field('学校名称','school')}${field('学历','level')}${field('学位证书编号','dn')}${field('学历证书编号','en')}${field('绩点制','scale')}${field('学分绩点','gpa')}${field('研究方向及课题','research')}</section><section><h2>家庭关系</h2><div><h3>父亲</h3>${field('姓名','father')}${field('工作单位','fu')}${field('职位','fp')}</div><div><h3>母亲</h3>${field('姓名','mother')}${field('工作单位','mu')}</div></section>`,{runScripts:'outside-only',pretendToBeVisual:true});
+const w=dom.window,d=w.document;w.CSS={escape:String};
+const profile={name:'本人',workExperience:[{company:'本人公司'}],education:[{school:'示例大学',level:'硕士研究生',degree:'硕士',gpa:'3.87',gpaScale:'4',researchTopic:'示例课题'}],family:[{relation:'父亲',name:'测试父亲',workUnit:'父亲单位',position:'父亲职位'},{relation:'母亲',name:'测试母亲',workUnit:'母亲单位'}]};
+const run=async()=>{w.__RESUME_PULSE_PROFILE__=profile;w.__RESUME_PULSE_OPTIONS__={overwrite:true};await w.eval(code);};
+await run();for(const [id,value] of Object.entries({dn:'',en:'',scale:'4',gpa:'3.87',research:'示例课题',father:'测试父亲',fu:'父亲单位',fp:'父亲职位',mother:'测试母亲',mu:'母亲单位'}))assert.equal(d.getElementById(id).value,value,id);
+d.body.innerHTML='<h2>家庭关系</h2><table><tr><td>与本人关系</td><td><select><option>父亲</option></select></td><td>姓名</td><td><input id="name"></td></tr><tr><td>工作单位</td><td><input id="unit"></td><td>出生日期</td><td><input id="birth"></td></tr><tr><td>职位</td><td><input id="position"></td><td>电话</td><td><input id="phone"></td></tr></table>';
+await run();assert.equal(d.querySelector('#name').value,'测试父亲');assert.equal(d.querySelector('#unit').value,'父亲单位');assert.equal(d.querySelector('#position').value,'父亲职位');assert.equal(d.querySelector('#phone').value,'');
+console.log('Family headings and multi-column forms isolated; education numbers and GPA scale isolated');w.close();
