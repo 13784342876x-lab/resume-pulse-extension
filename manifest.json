@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "简历脉冲 · 一键网申",
-  "version": "0.6.13",
+  "version": "0.6.14",
   "description": "悬浮在招聘页面上，识别旧式表格、iframe 与常见组件，一键填入本地简历资料；永不自动提交。",
   "permissions": [
     "storage",

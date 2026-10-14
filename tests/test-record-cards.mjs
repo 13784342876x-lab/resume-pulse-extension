@@ -10,6 +10,9 @@ const profile={workExperience:[{company:'甲公司',role:'研发实习',type:'�
 const run=async()=>{w.__RESUME_PULSE_PROFILE__=profile;return w.eval(code);};
 await run();assert.equal(d.querySelector('#company1').value,'甲公司');assert.equal(d.querySelector('#type1').value,'实习');assert.equal(d.querySelector('#notes1').value,'甲备注');
 await run();assert.equal(d.querySelector('#company1').value,'甲公司');
+profile.workExperience[0].department='研发部';
+d.querySelector('.card').insertAdjacentHTML('beforeend',field('所在部门','department1'));
+await run();assert.equal(d.querySelector('#department1').value,'研发部');
 d.querySelector('main').insertAdjacentHTML('beforeend',card(2));await run();assert.equal(d.querySelector('#company2').value,'乙公司');assert.equal(d.querySelector('#start2').value,'2024-02');assert.equal(d.querySelector('#detail2').value,'乙内容');
 d.querySelector('main').innerHTML=card(3);await run();assert.equal(d.querySelector('#company3').value,'');
 // Reset per-profile state and reuse the same editor after saving its first row.

@@ -235,6 +235,7 @@
     if(!group)return null;
     const items=controls(group),label=local(el);
     let field=mappings[kind].find(([pattern])=>pattern.test(label))?.[1];
+    if(kind==='workExperience'&&/所在部门|所属部门|任职部门|部门名称|^部门$/.test(label))field='department';
     if(field==='gpa'&&!/gpa|绩点/.test(label))return {id:'ambiguousScore',value:''};
     if(!field&&/就读年月|在校时间|起止时间|在职时间/.test(label)){
       const row=el.closest('.el-form-item,.ant-form-item,.form-item,label')||el.parentElement;

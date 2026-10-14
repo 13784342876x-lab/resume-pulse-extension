@@ -23,6 +23,7 @@ const schemas = {
     ["jointTraining","是否联合培养","select",["","是","否"]]
   ]},
   workExperience: { title:"工作 / 实习经历", fields:[
+    ["department","所在部门","text"],
     ["type","经历类型","select",["","工作","实习","项目"]],["company","单位名称","text"],["role","岗位 / 职务","text"],
     ["companyType","单位性质","select",["","国有企业","民营企业","外资企业","合资企业","事业单位","机关","其他"]],["workType","工作性质","select",["","全职","兼职","实习","其他"]],["location","工作地区","region"],["notes","补充说明","textarea"],
     ["start","开始时间","month"],["end","结束时间","month"],["detail","主要工作与成果","textarea"]
