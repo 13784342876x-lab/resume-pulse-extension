@@ -218,6 +218,7 @@
   };
   mappings.education.unshift([/学位证书.*号|学位证.*号/,'degreeCertificateNumber'],[/学历证书.*号|毕业证.*号/,'educationCertificateNumber'],[/绩点制|绩点满分|gpa满分/,'gpaScale'],[/研究方向|研究课题|研究.*课题/,'researchTopic'],[/学历形式/,'studyForm'],[/院校中文名称/,'school']);
   familyFields.unshift([/职位|岗位/,'position'],[/地址|住址/,'address']);
+  mappings.workExperience.unshift([/所属行业|所处行业|行业类别|行业名称|^行业$/,'industry'],[/国家地区|工作国家|^国家$/,'country'],[/省地区|省份|工作省|^省$/,'province'],[/工作城市|所在城市|^城市|请输入城市/,'city']);
   const recordHit=el=>{
     const local=item=>compact(labelOnly(item)+' '+(item.placeholder||'')+' '+(item.getAttribute('aria-label')||''));
     const controls=node=>cachedControls(node,'record',()=>[...node.querySelectorAll('input,select,textarea')].filter(item=>item.type!=='hidden'&&visible(item)));
@@ -259,6 +260,13 @@
     const index=assigned.get(group),record=lists[kind][index];
     if(!record)return {id:'recordMissing',value:''};
     let value=record[field];
+    if(kind==='workExperience'&&!value&&['province','city'].includes(field)){
+      const location=String(record.location||'').replace(/[\s/]+/g,'');
+      const municipality=location.match(/^(北京市|天津市|上海市|重庆市)/)?.[1];
+      const province=municipality||location.match(/^(.+?(?:省|自治区|特别行政区))/)?.[1]||'';
+      const remainder=province?location.slice(province.length):location;
+      value=field==='province'?province:municipality||remainder.match(/^(.+?(?:市|自治州|地区|盟))/)?.[1]||'';
+    }
     if(field==='majorCategory')value=record.majorCategoryPath||value;
     if(field==='workType')value=value||(record.type==='实习'?'实习':'');
     // Persist the selection across clicks, including a reused cleared editor.
