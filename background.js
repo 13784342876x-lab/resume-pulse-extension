@@ -28,9 +28,9 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
     const stats=executions.reduce((sum,item)=>{
       const value=item.result||{};
       sum.frames+=1;
-      for(const key of ["filled","skipped","matched","total","manual","unfilled","unrecognized"])sum[key]+=Number(value[key]||0);
+      for(const key of ["filled","skipped","matched","total","manual","unfilled","unrecognized","dropdownBlocked"])sum[key]+=Number(value[key]||0);
       return sum;
-    },{frames:0,filled:0,skipped:0,matched:0,total:0,manual:0,unfilled:0,unrecognized:0});
+    },{frames:0,filled:0,skipped:0,matched:0,total:0,manual:0,unfilled:0,unrecognized:0,dropdownBlocked:0});
     sendResponse({ok:true,stats});
   })().catch(error=>sendResponse({ok:false,error:error?.message||"当前页面不允许插件访问。"}));
   return true;

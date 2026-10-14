@@ -329,14 +329,15 @@
     highlight(el);return true;
   };
   const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+  let dropdownBlocked=false;
   const fillCombo=async(el,value)=>{
-    if(!value)return false;
+    if(!value||dropdownBlocked)return false;
     const listSelector='[role="listbox"],.el-select-dropdown,.ant-select-dropdown,.el-cascader__dropdown,.ivu-select-dropdown,.next-overlay-wrapper,.semi-select-option-list,.arco-select-dropdown';
     const before=new Set([...document.querySelectorAll(listSelector)].filter(visible));
     const input=el.matches('input')?el:el.querySelector('input');const original=input?.value||'';let searched=false;
     const trigger=el.querySelector('.ivu-select-selection,.next-select-inner,.ant-select-selector,.arco-select-view')||input||el;
     trigger.dispatchEvent(new MouseEvent('mousedown',{bubbles:true}));trigger.dispatchEvent(new MouseEvent('mouseup',{bubbles:true}));trigger.click();let picked=false;
-    const used=new Set();
+    const used=new Set(),ownedPopups=new Set();let ambiguous=false,lastChoice=null;
     for(let step=0;step<4;step++){
       let choice=null;
       for(let attempt=0;attempt<8&&!choice;attempt++){
@@ -344,7 +345,11 @@
         const owners=[el,input,el.querySelector('[role="combobox"]')].filter(Boolean);
         const ids=owners.flatMap(node=>[node.getAttribute('aria-controls'),node.getAttribute('aria-owns')]).filter(Boolean).join(' ').split(/\s+/);
         const linked=ids.map(id=>document.getElementById(id)).filter(visible);
-        const popups=linked.length?linked:[...document.querySelectorAll(listSelector)].filter(node=>visible(node)&&(!before.has(node)||el.contains(node)));
+        const candidates=[...document.querySelectorAll(listSelector)].filter(node=>visible(node)&&(!before.has(node)||el.contains(node)));
+        const roots=candidates.filter(node=>!candidates.some(parent=>parent!==node&&parent.contains(node)));
+        const popups=linked.length?linked:roots.length===1?roots:[];
+        if(!linked.length&&roots.length>1){ambiguous=true;roots.forEach(node=>ownedPopups.add(node));break;}
+        popups.forEach(node=>ownedPopups.add(node));
         const choices=popups.flatMap(node=>[...node.querySelectorAll('[role="option"],.el-select-dropdown__item,.ant-select-item-option,.el-cascader-node,.ivu-select-item,.next-menu-item,.semi-select-option,.arco-select-option')]).filter(node=>visible(node)&&!used.has(node)&&!node.classList.contains('is-disabled')&&!node.classList.contains('ivu-select-item-disabled'));
         choice=matchChoice(choices,value);
         if(!choice&&attempt===2&&!searched&&input&&!input.readOnly&&!el.matches('.el-cascader')){
@@ -352,14 +357,28 @@
           Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,query);input.dispatchEvent(new Event('input',{bubbles:true}));searched=true;
         }
       }
-      if(!choice)break;
-      used.add(choice);choice.dispatchEvent(new MouseEvent('mousedown',{bubbles:true}));choice.click();picked=true;
+      if(!choice||ambiguous)break;
+      used.add(choice);choice.dispatchEvent(new MouseEvent('mousedown',{bubbles:true}));choice.dispatchEvent(new MouseEvent('mouseup',{bubbles:true}));choice.click();picked=true;lastChoice=choice;
       if(!el.matches('.el-cascader'))break;
     }
-    // Only option selection counts as filled; typing search text alone is not a selection.
-    if(!picked){if(searched){Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,original);input.dispatchEvent(new Event('input',{bubbles:true}));}(input||el).dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));}
-    if(picked)highlight(el);
-    return picked;
+    // A click is not a commit. Confirm the selected label/value, not search text.
+    let confirmed=false;
+    for(let attempt=0;picked&&attempt<6;attempt++){
+      const selected=el.querySelector('.ant-select-selection-item,.el-select__selected-item:not(.is-placeholder),.ivu-select-selected-value,.next-select-values,.semi-select-selection-text,.arco-select-view-value');
+      const actual=selected?textOf(selected):searched?'':comboValue(el);
+      confirmed=optionToken(actual)===optionToken(value)||Boolean(lastChoice?.getAttribute('aria-selected')==='true'&&optionToken(textOf(lastChoice))===optionToken(value));
+      if(confirmed)break;await pause(100);
+    }
+    if(!picked&&searched){Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,original);input.dispatchEvent(new Event('input',{bubbles:true}));}
+    if([...ownedPopups].some(visible)){
+      trigger.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',code:'Escape',bubbles:true}));input?.blur();
+      document.body.dispatchEvent(new MouseEvent('mousedown',{bubbles:true}));document.body.dispatchEvent(new MouseEvent('mouseup',{bubbles:true}));document.body.dispatchEvent(new MouseEvent('click',{bubbles:true}));
+      await pause(100);
+      // An unclosed/ambiguous popup blocks subsequent dropdowns in this run.
+      dropdownBlocked=[...ownedPopups].some(visible);
+    }
+    if(confirmed)highlight(el);
+    return confirmed;
   };
   let filled=0,skipped=0,matched=0;const filledElements=new WeakSet(),matchedElements=new WeakSet(),skippedElements=new WeakSet();
   const attemptedCombos=new WeakSet();
@@ -382,5 +401,5 @@
   // Keep feedback visible after slow dropdowns finish, not just while filling.
   for(const el of eligible)if(filledElements.has(el))highlight(el);
   const missing=eligible.filter(el=>matchedElements.has(el)&&!filledElements.has(el)&&!skippedElements.has(el)).length;
-  return {filled,skipped,matched,total:eligible.length,manual,unfilled:missing,unrecognized:eligible.filter(el=>!matchedElements.has(el)).length};
+  return {filled,skipped,matched,total:eligible.length,manual,unfilled:missing,unrecognized:eligible.filter(el=>!matchedElements.has(el)).length,dropdownBlocked:Number(dropdownBlocked)};
 })()

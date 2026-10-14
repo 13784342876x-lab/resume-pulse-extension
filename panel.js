@@ -40,6 +40,7 @@
       result.textContent=`${overwrite?'已覆盖/填写':'已填写'} ${s.filled} 个字段，跳过 ${s.skipped||0} 个已有内容；扫描 ${s.total} 个控件，用时 ${((Date.now()-start)/1000).toFixed(1)} 秒。`;
       if(s.unfilled)result.textContent+=` ${s.unfilled} 个匹配字段未填入（档案缺值或控件选择失败）。`;
       if(s.unrecognized)result.textContent+=` ${s.unrecognized} 个控件尚未识别。`;
+      if(s.dropdownBlocked)result.textContent+=' 下拉弹层未关闭，已暂停其余下拉项，避免连续弹窗；请关闭弹层后手动选择。';
       result.textContent+=' 绿色边框表示已执行填写，请复核网站是否接受。';
       if(s.manual)result.textContent+=` ${s.manual} 个上传/承诺项需手动完成。`;
     }catch(error){result.className="result show warn";result.textContent=error.message;}
