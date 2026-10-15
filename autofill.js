@@ -31,8 +31,18 @@
     if(cell?.previousElementSibling&&!cell.previousElementSibling.querySelector('input,select,textarea'))return compact(labelText(cell.previousElementSibling));
     const group=el.closest('.form-item,.field,.ant-form-item,.el-form-item,.layui-form-item');
     if(group)return compact(labelText(group));
+    // Unbound labels often sit above several layout wrappers. Only accept a
+    // direct label in the nearest single-field container, never a whole row.
+    for(let node=el.parentElement,depth=0;node&&depth<5;node=node.parentElement,depth++){
+      const labels=[...node.children].filter(child=>child.matches('label')&&!child.htmlFor&&!child.contains(el));
+      const controls=[...node.querySelectorAll('input:not([type="hidden"]),select,textarea')];
+      if(labels.length===1&&controls.length===1&&controls[0]===el){
+        const value=compact(labelText(labels[0]));if(value)return value;
+      }
+      if(controls.length>1)break;
+    }
     for(const sibling of [el.previousElementSibling,el.parentElement?.previousElementSibling]){
-      if(sibling&&!sibling.matches('input,select,textarea')&&!sibling.querySelector('input,select,textarea')&&textOf(sibling).length<100)return compact(labelText(sibling));
+      if(sibling&&!sibling.matches('input,select,textarea')&&!sibling.querySelector('input,select,textarea')&&textOf(sibling).length<100){const value=compact(labelText(sibling));if(value)return value;}
     }
     return '';
   };
