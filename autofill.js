@@ -210,16 +210,17 @@
     const assignment=familyAssignments.get(group),member=lists.family[assignment.index];
     return {id:`familyEditor:${field}`,value:member?(field==='age'?ageOf(member):field==='unitAndPosition'?[member.workUnit,member.position].filter(Boolean).join(' / '):member[field]):'',familyGroup:group,familyIndex:assignment.index};
   };
-  const ageOf=member=>{if(member?.age)return member.age;const match=String(member?.birthday||"").match(/((?:19|20)\d{2})(?:[-/](\d{1,2}))?/);if(!match)return "";const now=new Date(),month=Number(match[2]||1);return String(now.getFullYear()-Number(match[1])-(now.getMonth()+1<month?1:0));};
+  const ageOf=member=>{if(member?.age)return member.age;const parts=dateParts(member?.birthday||'');if(!parts)return '';const now=new Date(),{year,month,day}=parts;if(!day&&now.getMonth()+1===month)return '';const age=now.getFullYear()-year-(now.getMonth()+1<month||(now.getMonth()+1===month&&now.getDate()<day)?1:0);return age>=0&&age<=120?String(age):'';};
   const roleAliases=[
     ["父亲",/(父亲|爸爸)/],["母亲",/(母亲|妈妈)/],["配偶",/(配偶)/],["丈夫",/(丈夫|先生)/],["妻子",/(妻子|太太)/],["儿子",/(儿子)/],["女儿",/(女儿)/],["兄弟",/(兄弟|哥哥|弟弟)/],["姐妹",/(姐妹|姐姐|妹妹)/],["祖父",/(祖父|爷爷)/],["祖母",/(祖母|奶奶)/],["外祖父",/(外祖父|外公)/],["外祖母",/(外祖母|外婆)/]
   ];
   const familyRoleHit=text=>{const alias=roleAliases.find(([,pattern])=>pattern.test(text));if(!alias)return null;const member=lists.family.find(item=>item.relation===alias[0]||roleAliases.find(entry=>entry[0]===alias[0])?.[1].test(item.relation||""));if(!member)return null;const fields=[[/姓名|name/,"name"],[/年龄/,"age"],[/出生|生日/,"birthday"],[/政治面貌|政治身份/,"politicalStatus"],[/工作单位|单位名称/,"workUnit"],[/职务|职业/,"position"],[/电话|手机|联系方式/,"phone"],[/与本人关系|成员关系|称谓/,"relation"]];const hit=fields.find(([pattern])=>pattern.test(text));if(!hit)return null;return{id:`family:${alias[0]}:${hit[1]}`,value:hit[1]==="age"?ageOf(member):member[hit[1]]};};
   const languageRowHit=(text,el)=>{if(el?.tagName!=="SELECT"||!/(英语能力|外语能力)/.test(text))return null;const row=el.closest("tr,.form-item,.field,.ant-form-item,.el-form-item,.layui-form-item,li,fieldset,dl")||el.parentElement;const selects=[...row.querySelectorAll("select")].filter(visible);if(selects.length<2)return null;const index=selects.indexOf(el);if(index<0)return null;const language=lists.languages.find(item=>/英语|english/i.test(item.name||""))||lists.languages[0];if(!language)return null;const optionText=selects.map(select=>[...select.options].map(option=>textOf(option)).join(" ")).join(" ");if(index===0&&/(CET|大学英语|托福|雅思|英语专业)/i.test(optionText))return{id:"languageCertificate",value:language.certificate};if(index===1)return{id:"languageScore",value:language.score||language.level};return null;};
   // Bind a whole education/work card to one record, not one counter per label.
-  const recordKey=JSON.stringify([p.name,lists.education,lists.workExperience,lists.projects]);
+  const recordKey=JSON.stringify([p.name,lists.education,lists.workExperience,lists.projects,lists.certificates]);
   const records=window.__RESUME_PULSE_RECORDS__?.key===recordKey?window.__RESUME_PULSE_RECORDS__:{key:recordKey,education:{next:0,groups:new WeakMap()},workExperience:{next:0,groups:new WeakMap()},projects:{next:0,groups:new WeakMap()}};
   window.__RESUME_PULSE_RECORDS__=records;
+  records.certificates||={next:0,groups:new WeakMap()};
   const assigned=new WeakMap();
   const mappings={
     projects:[[/项目名称|项目名|项目标题/,'name'],[/项目职责|具体职责|承担.*工作|负责.*工作/,'responsibilities'],[/项目角色|担任.*角色|担任.*职务|项目职务/,'role'],[/所在单位|所属单位|所属公司|单位名称/,'organization'],[/团队规模|团队人数|项目人数/,'teamSize'],[/开始|起始|启动/,'start'],[/结束|截止|完成时间/,'end'],[/项目介绍|项目描述|项目概况|项目内容|项目成果|背景意义/,'detail']],
@@ -227,6 +228,7 @@
     education:[[/是否.*该段学历/,'hasEducation'],[/专升本/,'upgraded'],[/双学位/,'dualDegree'],[/学生干部/,'studentLeader'],[/专业分类|专业类别|学科门类/,'majorCategory'],[/学校名称|毕业院校|就读学校|学校$/,'school'],[/学历|学历层次/,'level'],[/学位/,'degree'],[/专业/,'major'],[/院系|学院名称/,'faculty'],[/入学|开始|起始/,'start'],[/毕业时间|毕业日期|结束|截止/,'end'],[/全日制|教育方式|学习形式/,'studyForm'],[/统招|招生类别|招生类型/,'admissionType'],[/gpa|绩点|成绩/,'gpa'],[/学制/,'duration']]
   };
   mappings.education.unshift([/学位证书.*号|学位证.*号/,'degreeCertificateNumber'],[/学历证书.*号|毕业证.*号/,'educationCertificateNumber'],[/绩点制|绩点满分|gpa满分/,'gpaScale'],[/研究方向|研究课题|研究.*课题/,'researchTopic'],[/学历形式/,'studyForm'],[/院校中文名称/,'school']);
+  mappings.certificates=[[/证书名称/,'name'],[/证书编号/,'number'],[/获取时间|取得时间|取证时间/,'date'],[/颁证机构|颁发机构/,'issuer']];
   familyFields.unshift([/职位|岗位/,'position'],[/地址|住址/,'address']);
   mappings.workExperience.unshift([/所属行业|所处行业|行业类别|行业名称|^行业$/,'industry'],[/国家地区|工作国家|^国家$/,'country'],[/省地区|省份|工作省|^省$/,'province'],[/工作城市|所在城市|^城市|请输入城市/,'city']);
   const recordHit=el=>{
@@ -239,13 +241,17 @@
       const schools=labels.filter(t=>/学校名称|毕业院校|就读学校/.test(t)).length;
       const companies=labels.filter(t=>/单位名称|公司名称|企业名称|实习单位/.test(t)).length;
       const projects=labels.filter(t=>/项目名称|项目名|项目标题/.test(t)).length;
-      if(projects===1&&labels.some(t=>/项目角色|项目职责|项目介绍|项目描述|团队规模/.test(t))){group=node;kind='projects';break;}
+      if(labels.filter(t=>/证书名称/.test(t)).length===1&&labels.some(t=>/证书编号|颁证机构/.test(t))){group=node;kind='certificates';break;}
+      if(projects===1&&labels.some(t=>/项目角色|项目职责|项目介绍|项目描述|团队规模|所在单位及职务承担角色/.test(t))){group=node;kind='projects';break;}
       if(schools===1&&labels.some(t=>/学历|专业/.test(t))){group=node;kind='education';break;}
-      if(companies===1&&labels.some(t=>/职位|岗位|职务|工作内容/.test(t))){group=node;kind='workExperience';break;}
+      if(items.length>=2&&companies===1&&labels.some(t=>/职位|岗位|职务|工作内容/.test(t))){group=node;kind='workExperience';break;}
     }
     if(!group)return null;
     const items=controls(group),label=local(el);
     let field=mappings[kind].find(([pattern])=>pattern.test(label))?.[1];
+    if(kind==='projects'&&/所在单位及职务承担角色/.test(label))field='organizationAndRole';
+    if(kind==='workExperience'&&/实习单位部门及职位/.test(label))field='companyDepartmentRole';
+    if(/^(说明|说明请输入)$/.test(label))field='detail';
     if(kind==='workExperience'&&/所在部门|所属部门|任职部门|部门名称|^部门$/.test(label))field='department';
     if(field==='gpa'&&!/gpa|绩点/.test(label))return {id:'ambiguousScore',value:''};
     if(!field&&/就读年月|在校时间|起止时间|在职时间/.test(label)){
@@ -254,7 +260,7 @@
     }
     if(!field)return null;
     if(!assigned.has(group)){
-      const state=records[kind],identityField=kind==='education'?'school':kind==='projects'?'name':'company';
+      const state=records[kind],identityField=kind==='education'?'school':kind==='projects'||kind==='certificates'?'name':'company';
       const identity=items.find(item=>mappings[kind].find(([pattern])=>pattern.test(local(item)))?.[1]===identityField);
       const read=item=>item.tagName==='SELECT'?textOf(item.selectedOptions[0]):isCombo(item)?comboValue(item):item.value;
       const identityValue=identity&&!empty(identity)?compact(read(identity)):'';
@@ -270,6 +276,8 @@
     const index=assigned.get(group),record=lists[kind][index];
     if(!record)return {id:'recordMissing',value:''};
     let value=record[field];
+    if(field==='organizationAndRole')value=[record.organization,record.role].filter(Boolean).join(' / ');
+    if(field==='companyDepartmentRole')value=[record.company,record.department,record.role].filter(Boolean).join(' / ');
     if(kind==='workExperience'&&!value&&['province','city'].includes(field)){
       const location=String(record.location||'').replace(/[\s/]+/g,'');
       const municipality=location.match(/^(北京市|天津市|上海市|重庆市)/)?.[1];
@@ -295,6 +303,16 @@
     if(/(学位|学历|毕业).*证.*(号|编码)/.test(fieldLabel))return recordHit(el)||{id:'educationCertificateMissing',value:''};
     const editorHit=familyEditorHit(text,el);if(editorHit)return editorHit;
     const roleHit=familyRoleHit(labelOnly(el));if(roleHit)return roleHit;
+    if(/^年龄$/.test(fieldLabel))return {id:'age',value:ageOf(p)};
+    // Explicit education level outranks array order and any school field.
+    const level=(fieldLabel.match(/^(博士|硕士|本科|大专|专科|高中)/)||heading.match(/^(博士|硕士|本科|大专|专科|高中).*教育/))?.[1];
+    if(level){
+      const candidates=lists.education.filter(item=>new RegExp(level==='大专'||level==='专科'?'大专|专科':level).test(item.level||''));
+      let field=mappings.education.find(([pattern])=>pattern.test(fieldLabel))?.[1];
+      if(/学习方式/.test(fieldLabel))field='studyForm';
+      if(/海外留学/.test(fieldLabel))field='overseas';
+      return {id:'educationLevelScoped',value:candidates.length===1&&field?candidates[0][field]:''};
+    }
     const own=compact(labelOnly(el)+' '+(el.placeholder||'')+' '+(el.getAttribute('aria-label')||''));
     const languageContext=own+' '+compact(precedingHeading(el));
     // Language scores must never fall through to GPA or general certificates.

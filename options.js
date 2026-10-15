@@ -45,7 +45,7 @@ const schemas = {
     ["name","竞赛名称","text"],["award","获奖情况","text"],["level","竞赛级别","text"],["date","时间","month"],["organizer","主办单位","text"],["role","本人角色","text"]
   ]},
   certificates: { title:"证书", fields:[
-    ["name","证书 / 资格名称","text"],["level","等级 / 成绩","text"],["number","证书编号","text"],["date","取得时间","month"],["issuer","颁发机构","text"],["expiry","有效期至","month"]
+    ["date","获取时间","month"],["name","证书名称","text"],["number","证书编号","text"],["issuer","颁证机构","text"],["level","等级 / 成绩","text"],["expiry","有效期至","month"]
   ]},
   publications: { title:"学术成果", fields:[
     ["type","成果类型","select",["","论文","专著","专利","软件著作权","研究报告","其他"]],["title","题目 / 名称","text"],["venue","期刊 / 出版社 / 授权单位","text"],["authorRank","作者排序","text"],["date","发表 / 授权时间","month"],["identifier","DOI / ISBN / 专利号","text"]
