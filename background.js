@@ -22,13 +22,13 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
     await chrome.scripting.executeScript({
       target:{tabId,allFrames:true},
       func:(value,options)=>{window.__RESUME_PULSE_PROFILE__=value;window.__RESUME_PULSE_OPTIONS__=options;},
-      args:[profile,{overwrite:Boolean(message.overwrite),familyIndex:message.familyIndex}]
+      args:[profile,{overwrite:Boolean(message.overwrite),familyIndex:message.familyIndex,workIndex:message.workIndex}]
     });
     const executions=await chrome.scripting.executeScript({target:{tabId,allFrames:true},files:["autofill.js"]});
     const stats=executions.reduce((sum,item)=>{
       const value=item.result||{};
       sum.frames+=1;
-      for(const key of ["filled","skipped","matched","total","manual","unfilled","unrecognized","dropdownBlocked"])sum[key]+=Number(value[key]||0);
+      for(const key of ["filled","skipped","matched","total","manual","unfilled","unrecognized","dropdownBlocked","timedOut"])sum[key]=(sum[key]||0)+Number(value[key]||0);
       return sum;
     },{frames:0,filled:0,skipped:0,matched:0,total:0,manual:0,unfilled:0,unrecognized:0,dropdownBlocked:0});
     sendResponse({ok:true,stats});

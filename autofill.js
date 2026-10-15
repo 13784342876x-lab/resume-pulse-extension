@@ -12,6 +12,7 @@
     for(let depth=0;node&&depth<5;depth++,node=node.parentElement){
       let previous=node.previousElementSibling;
       for(let i=0;previous&&i<4;i++,previous=previous.previousElementSibling){
+        if(previous.querySelector?.('input,select,textarea'))continue;
         if(/^(父亲|母亲|配偶|家庭关系)$/.test(textOf(previous)))return textOf(previous);
         const heading=previous.matches?.("h1,h2,h3,h4,h5,legend,.title,[class*='title'],[class*='Title']")?previous:previous.querySelector?.("h1,h2,h3,h4,h5,legend,.title,[class*='title'],[class*='Title']");
         if(heading&&textOf(heading))return textOf(heading);
@@ -87,7 +88,7 @@
     {id:"politicalStatus",re:/(政治面貌|党派|政治身份|politicalstatus)/,get:()=>p.politicalStatus},
     {id:"height",re:/(身高|height)/,get:()=>p.height},{id:"weight",re:/(体重|weight)/,get:()=>p.weight},
     {id:"maritalStatus",re:/(婚姻状况|婚姻状态|婚否|maritalstatus)/,get:()=>p.maritalStatus},
-    {id:"healthStatus",re:/(健康状况|身体状况|healthstatus)/,get:()=>p.healthStatus},
+    {id:"healthStatus",re:/(健康状况|健康状态|身体状况|healthstatus)/,get:()=>p.healthStatus},
     {id:"birthPlace",re:/(出生地|出生所在地|出生地点|birthplace)/,get:()=>p.birthPlace},
     {id:"householdType",re:/(户口性质|户籍性质|户口类别|householdtype)/,get:()=>p.householdType},
     {id:"hukouLocation",re:/(户口所在地|户籍所在地|户口地址|户籍地址)/,get:()=>p.hukouLocation},
@@ -229,6 +230,17 @@
   };
   mappings.education.unshift([/学位证书.*号|学位证.*号/,'degreeCertificateNumber'],[/学历证书.*号|毕业证.*号/,'educationCertificateNumber'],[/绩点制|绩点满分|gpa满分/,'gpaScale'],[/研究方向|研究课题|研究.*课题/,'researchTopic'],[/学历形式/,'studyForm'],[/院校中文名称/,'school']);
   mappings.certificates=[[/证书名称/,'name'],[/证书编号/,'number'],[/获取时间|取得时间|取证时间/,'date'],[/颁证机构|颁发机构/,'issuer']];
+  mappings.education.unshift([/是否最高学历/,'isHighest'],[/是否全日制/,'isFullTime'],[/是否统招/,'isUnified'],[/学习方式/,'studyForm']);
+  const educationValue=(record,field)=>{
+    if(!record)return '';
+    if(field==='isFullTime')return record.studyForm?record.studyForm==='全日制'?'是':'否':'';
+    if(field==='isUnified')return record.admissionType?record.admissionType==='统招'?'是':'否':'';
+    if(field==='isHighest'){
+      const rank=item=>/博士/.test(item.level)?6:/硕士/.test(item.level)?5:/本科/.test(item.level)?4:/专科|大专/.test(item.level)?3:/高中|中专/.test(item.level)?2:0;
+      return rank(record)?rank(record)===Math.max(...lists.education.map(rank))?'是':'否':'';
+    }
+    return record[field];
+  };
   familyFields.unshift([/职位|岗位/,'position'],[/地址|住址/,'address']);
   mappings.workExperience.unshift([/所属行业|所处行业|行业类别|行业名称|^行业$/,'industry'],[/国家地区|工作国家|^国家$/,'country'],[/省地区|省份|工作省|^省$/,'province'],[/工作城市|所在城市|^城市|请输入城市/,'city']);
   const recordHit=el=>{
@@ -269,13 +281,14 @@
       const matches=lists[kind].map((record,index)=>({record,index})).filter(({record})=>(identityValue||levelValue)&&(!identityValue||compact(record[identityField])===identityValue)&&(!levelValue||compact(record.level)===levelValue));
       const previous=state.groups.get(group);
       const nonempty=Boolean(identityValue);
-      const index=matches.length===1?matches[0].index:previous&&nonempty?previous.index:identityValue||levelValue?-1:state.next;
+      const requested=kind==='workExperience'&&Number.isInteger(options.workIndex)&&options.workIndex>=0?options.workIndex:null;
+      const index=requested!==null?requested:matches.length===1?matches[0].index:previous&&nonempty?previous.index:identityValue||levelValue?-1:state.next;
       assigned.set(group,index);
       if(index>=0&&lists[kind][index])state.next=Math.max(state.next,index+1);
     }
     const index=assigned.get(group),record=lists[kind][index];
     if(!record)return {id:'recordMissing',value:''};
-    let value=record[field];
+    let value=kind==='education'?educationValue(record,field):record[field];
     if(field==='organizationAndRole')value=[record.organization,record.role].filter(Boolean).join(' / ');
     if(field==='companyDepartmentRole')value=[record.company,record.department,record.role].filter(Boolean).join(' / ');
     if(kind==='workExperience'&&!value&&['province','city'].includes(field)){
@@ -293,6 +306,11 @@
   };
   const resolve=(text,counters,el)=>{
     const fieldLabel=localLabel(el),heading=compact(precedingHeading(el));
+    // Emergency contacts are a separate person; missing data must remain blank.
+    if(/紧急联系/.test(fieldLabel)||/紧急联系/.test(heading)){
+      const field=/电话|手机|联系方式/.test(fieldLabel)?'emergencyPhone':/关系/.test(fieldLabel)?'emergencyRelation':/姓名|联系人/.test(fieldLabel)?'emergencyName':null;
+      if(field)return {id:field,value:p[field]||''};
+    }
     const familyHeading=/^(父亲|母亲|配偶)$/.test(heading)?heading:null;
     if(familyHeading){
       const member=lists.family.find(item=>compact(item.relation)===familyHeading);
@@ -311,7 +329,7 @@
       let field=mappings.education.find(([pattern])=>pattern.test(fieldLabel))?.[1];
       if(/学习方式/.test(fieldLabel))field='studyForm';
       if(/海外留学/.test(fieldLabel))field='overseas';
-      return {id:'educationLevelScoped',value:candidates.length===1&&field?candidates[0][field]:''};
+      return {id:'educationLevelScoped',value:candidates.length===1&&field?educationValue(candidates[0],field):''};
     }
     const own=compact(labelOnly(el)+' '+(el.placeholder||'')+' '+(el.getAttribute('aria-label')||''));
     const languageContext=own+' '+compact(precedingHeading(el));
@@ -323,6 +341,7 @@
     }
     const languageHit=languageRowHit(text,el);if(languageHit)return languageHit;
     const record=recordHit(el);if(record)return record;
+    if(/是否最高学历|是否全日制|是否统招/.test(fieldLabel))return {id:'educationBooleanUnbound',value:''};
     const customHit=custom.find(x=>text.includes(compact(x.label)));if(customHit)return{id:`custom:${customHit.label}`,value:customHit.value};
     const direct=localLabel(el);
     const rule=rules.find(x=>x.re.test(direct))||rules.find(x=>x.re.test(text)&&!(x.id==='summary'&&!/个人优势|自我评价|个人简介|自我介绍|个人总结|summary|aboutme/.test(direct)));if(!rule)return null;
@@ -419,9 +438,24 @@
   };
   let filled=0,skipped=0,matched=0;const filledElements=new WeakSet(),matchedElements=new WeakSet(),skippedElements=new WeakSet();
   const attemptedCombos=new WeakSet();
-  const runPass=async()=>{labelCache=new WeakMap();controlCache=new WeakMap();eligible=scan();const counters={};for(const el of eligible){const hit=resolve(fieldContext(el),counters,el);if(!hit||filledElements.has(el))continue;if(!matchedElements.has(el)){matched++;matchedElements.add(el);}if(!overwrite&&!empty(el)){if(!skippedElements.has(el)){skipped++;skippedElements.add(el);}continue;}const combo=isCombo(el);if(combo&&attemptedCombos.has(el))continue;if(combo)attemptedCombos.add(el);if(combo?await fillCombo(el,hit.value):setValue(el,hit.value)){filled++;filledElements.add(el);if(hit.familyGroup){familyState.groups.set(hit.familyGroup,{index:hit.familyIndex});familyState.next=Math.max(familyState.next,hit.familyIndex+1);}}}};
+  const deadline=Date.now()+15000;let timedOut=false;
+  const runPass=async()=>{
+    labelCache=new WeakMap();controlCache=new WeakMap();eligible=scan();const counters={};let processed=0;
+    for(const el of eligible){
+      if(Date.now()>deadline){timedOut=true;break;}
+      if(++processed%10===0)await pause(0);
+      if(filledElements.has(el))continue;
+      const hit=resolve(fieldContext(el),counters,el);if(!hit)continue;
+      if(!matchedElements.has(el)){matched++;matchedElements.add(el);}
+      if(!overwrite&&!empty(el)){if(!skippedElements.has(el)){skipped++;skippedElements.add(el);}continue;}
+      if(hit.value===undefined||hit.value===null||hit.value==='')continue;
+      const combo=isCombo(el);if(combo&&attemptedCombos.has(el))continue;if(combo)attemptedCombos.add(el);
+      if(combo?await fillCombo(el,hit.value):setValue(el,hit.value)){filled++;filledElements.add(el);if(hit.familyGroup){familyState.groups.set(hit.familyGroup,{index:hit.familyIndex});familyState.next=Math.max(familyState.next,hit.familyIndex+1);}}
+    }
+  };
   await runPass();
   for(const delay of [250,500,750]){
+    if(timedOut)break;
     const pendingNative=eligible.some(el=>matchedElements.has(el)&&!filledElements.has(el)&&!skippedElements.has(el)&&!isCombo(el));
     const pendingDisabled=[...document.querySelectorAll('select:disabled,input:disabled')].some(visible);
     if(!pendingNative&&!pendingDisabled)break;
@@ -438,5 +472,5 @@
   // Keep feedback visible after slow dropdowns finish, not just while filling.
   for(const el of eligible)if(filledElements.has(el))highlight(el);
   const missing=eligible.filter(el=>matchedElements.has(el)&&!filledElements.has(el)&&!skippedElements.has(el)).length;
-  return {filled,skipped,matched,total:eligible.length,manual,unfilled:missing,unrecognized:eligible.filter(el=>!matchedElements.has(el)).length,dropdownBlocked:Number(dropdownBlocked)};
+    return {filled,skipped,matched,total:eligible.length,manual,unfilled:missing,unrecognized:eligible.filter(el=>!matchedElements.has(el)).length,dropdownBlocked:Number(dropdownBlocked),timedOut:Number(timedOut)};
 })()

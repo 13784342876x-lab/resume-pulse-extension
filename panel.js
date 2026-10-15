@@ -26,6 +26,10 @@
   $(".edit").onclick=$(".manage").onclick=()=>chrome.runtime.sendMessage({type:"resume-pulse-open-options"});
   let profiles=[],activeId="";const htmlEscape=value=>String(value||"").replace(/[&<>"']/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
   function current(){return profiles.find(item=>item.id===activeId);}
+  const originalRenderMembers=renderMembers;renderMembers=()=>{originalRenderMembers();renderWork();};
+  const workLabel=document.createElement('label');workLabel.textContent='本次填写的工作 / 实习经历：';workLabel.style.cssText='display:block;margin:8px 0;font-size:11px';
+  const workSelect=document.createElement('select');workSelect.style.cssText=memberSelect.style.cssText;workSelect.setAttribute('aria-label','选择工作或实习经历');workLabel.append(workSelect);$('.fill').before(workLabel);
+  function renderWork(){const previous=workSelect.dataset.profile===activeId?workSelect.value:'';workSelect.replaceChildren(new Option('自动按顺序填写',''));(current()?.data?.workExperience||[]).forEach((item,index)=>workSelect.add(new Option(`${index+1}. ${item.company||'未填写单位'} · ${item.role||''}`,String(index))));workSelect.dataset.profile=activeId;workSelect.value=[...workSelect.options].some(item=>item.value===previous)?previous:'';workLabel.hidden=!current()?.data?.workExperience?.length;}
   function renderProfiles(){const select=$(".profile-select");select.innerHTML=profiles.map((item,index)=>`<option value="${htmlEscape(item.id)}"${item.id===activeId?" selected":""}>${htmlEscape(item.data?.name||`未命名档案 ${index+1}`)}</option>`).join("");const profile=current()?.data||{};const edu=profile.education?.[0];$(".summary").textContent=[edu?.level,edu?.school].filter(Boolean).join(" · ")||"请先完善个人资料";$(".avatar").textContent=(profile.name||"简").slice(0,1);renderMembers();}
   async function loadProfiles(){const stored=await chrome.storage.local.get(["profiles","activeProfileId","profile"]);profiles=Array.isArray(stored.profiles)&&stored.profiles.length?stored.profiles:[{id:"legacy",data:stored.profile||{}}];activeId=stored.activeProfileId||profiles[0].id;if(!profiles.some(item=>item.id===activeId))activeId=profiles[0].id;renderProfiles();}
   $(".profile-select").onchange=async event=>{activeId=event.target.value;const profile=current()?.data||{};await chrome.storage.local.set({activeProfileId:activeId,profile});renderProfiles();};
@@ -34,12 +38,13 @@
     button.disabled=true;button.firstElementChild.textContent="正在识别并填写…";
     result.className="result show";result.textContent="正在扫描表单，请稍候…";
     try{
-      const response=await chrome.runtime.sendMessage({type:"resume-pulse-fill",overwrite,familyIndex:memberSelect.value===""?null:Number(memberSelect.value)});
+      const response=await chrome.runtime.sendMessage({type:"resume-pulse-fill",overwrite,workIndex:workSelect.value===""?null:Number(workSelect.value),familyIndex:memberSelect.value===""?null:Number(memberSelect.value)});
       if(!response?.ok)throw new Error(response?.error||"填写失败");
       const s=response.stats;result.className=`result show ${s.unfilled||s.unrecognized||!s.filled?'warn':'ok'}`;
       result.textContent=`${overwrite?'已覆盖/填写':'已填写'} ${s.filled} 个字段，跳过 ${s.skipped||0} 个已有内容；扫描 ${s.total} 个控件，用时 ${((Date.now()-start)/1000).toFixed(1)} 秒。`;
       if(s.unfilled)result.textContent+=` ${s.unfilled} 个匹配字段未填入（档案缺值或控件选择失败）。`;
       if(s.unrecognized)result.textContent+=` ${s.unrecognized} 个控件尚未识别。`;
+      if(s.timedOut)result.textContent+=' 填充达到时间预算，已停止继续扫描；请复核后分段填写。';
       if(s.dropdownBlocked)result.textContent+=' 下拉弹层未关闭，已暂停其余下拉项，避免连续弹窗；请关闭弹层后手动选择。';
       result.textContent+=' 绿色边框表示已执行填写，请复核网站是否接受。';
       if(s.manual)result.textContent+=` ${s.manual} 个上传/承诺项需手动完成。`;
