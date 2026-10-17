@@ -2,7 +2,7 @@
   "name": "resume-pulse-extension",
   "private": true,
   "type": "module",
-  "version": "0.6.19",
+  "version": "0.6.20",
   "scripts": {
     "package": "pwsh -NoProfile -File scripts/package-release.ps1",
     "precheck": "node tests/test-dialog-placeholder.mjs && node tests/test-profile-safety.mjs && node tests/test-scoped-extras.mjs && node tests/test-nested-labels.mjs && node tests/test-feedback-performance.mjs && node tests/test-language-score.mjs && node tests/test-extra-dropdowns.mjs && node tests/test-local-labels.mjs && node tests/test-family-education-safety.mjs && node tests/test-dropdown-lifecycle.mjs && node tests/test-work-location.mjs",

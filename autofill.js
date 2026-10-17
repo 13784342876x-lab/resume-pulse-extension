@@ -239,15 +239,15 @@
   };
   mappings.education.unshift([/学位证书.*号|学位证.*号/,'degreeCertificateNumber'],[/学历证书.*号|毕业证.*号/,'educationCertificateNumber'],[/绩点制|绩点满分|gpa满分/,'gpaScale'],[/研究方向|研究课题|研究.*课题/,'researchTopic'],[/学历形式/,'studyForm'],[/院校中文名称/,'school']);
   mappings.certificates=[[/证书名称/,'name'],[/证书编号/,'number'],[/获取时间|取得时间|取证时间/,'date'],[/颁证机构|颁发机构/,'issuer']];
-  mappings.education.unshift([/是否最高学历/,'isHighest'],[/是否全日制/,'isFullTime'],[/是否统招/,'isUnified'],[/学习方式/,'studyForm']);
+  mappings.education.unshift([/是否为?第一学历/,'isFirst'],[/是否为?最高学历/,'isHighest'],[/是否全日制/,'isFullTime'],[/是否统招/,'isUnified'],[/学习方式/,'studyForm']);
   mappings.education.unshift([/毕业.*时间|肄业.*时间/,'end'],[/重点院校类型/,'schoolType'],[/标准专业名称/,'major']);
   const educationValue=(record,field)=>{
     if(!record)return '';
     if(field==='isFullTime')return record.studyForm?record.studyForm==='全日制'?'是':'否':'';
     if(field==='isUnified')return record.admissionType?record.admissionType==='统招'?'是':'否':'';
-    if(field==='isHighest'){
-      const rank=item=>/博士/.test(item.level)?6:/硕士/.test(item.level)?5:/本科/.test(item.level)?4:/专科|大专/.test(item.level)?3:/高中|中专/.test(item.level)?2:0;
-      return rank(record)?rank(record)===Math.max(...lists.education.map(rank))?'是':'否':'';
+    if(field==='isHighest'||field==='isFirst'){
+      const selected=lists.education.filter(item=>item[field]==='是');
+      return selected.length===1?(selected[0]===record?'是':'否'):'';
     }
     return record[field];
   };
@@ -351,7 +351,7 @@
     }
     const languageHit=languageRowHit(text,el);if(languageHit)return languageHit;
     const record=recordHit(el);if(record)return record;
-    if(/是否最高学历|是否全日制|是否统招/.test(fieldLabel))return {id:'educationBooleanUnbound',value:''};
+    if(/是否为?最高学历|是否为?第一学历|是否全日制|是否统招/.test(fieldLabel))return {id:'educationBooleanUnbound',value:''};
     const customHit=custom.find(x=>text.includes(compact(x.label)));if(customHit)return{id:`custom:${customHit.label}`,value:customHit.value};
     const direct=localLabel(el);
     const rule=rules.find(x=>x.re.test(direct))||rules.find(x=>x.re.test(text)&&!(x.id==='summary'&&!/个人优势|自我评价|个人简介|自我介绍|个人总结|summary|aboutme/.test(direct)));if(!rule)return null;

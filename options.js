@@ -8,6 +8,8 @@ const form = document.getElementById("profileForm");
 const arrays = ["education","workExperience","campusExperience","projects","languages","awards","competitions","certificates","publications","family","customFields"];
 const schemas = {
   education: { title:"教育经历", fields:[
+    ["isFirst","是否为第一学历（请如实选择唯一一段）","select",["","是","否"]],
+    ["isHighest","是否为最高学历（请如实选择唯一一段）","select",["","是","否"]],
     ["level","学历层次","select",["","博士研究生","硕士研究生","本科","大专","高中","中专 / 中职","其他"]],
     ["hasEducation","是否有该段学历","select",["","是","否"]],["upgraded","是否专升本","select",["","是","否"]],["dualDegree","是否有双学位","select",["","是","否"]],["studentLeader","是否学生干部","select",["","是","否"]],
     ["majorCategoryPath","专业分类完整路径（如本科 / 工学 / 计算机类）","text"],
@@ -151,7 +153,7 @@ function showToast(text){const el=document.getElementById("toast");el.textConten
 function activeEntry(){return profileStore.profiles.find(item=>item.id===profileStore.activeProfileId);}
 function renderProfileSwitch(){const select=document.getElementById("profileSwitch");select.innerHTML=profileStore.profiles.map((item,index)=>`<option value="${esc(item.id)}"${item.id===profileStore.activeProfileId?" selected":""}>${esc(item.data?.name||`未命名档案 ${index+1}`)}</option>`).join("");}
 async function persistStore(){const entry=activeEntry();if(entry)entry.data=draft;await storage.set({profiles:profileStore.profiles,activeProfileId:profileStore.activeProfileId,profile:draft});renderProfileSwitch();}
-async function saveProfile({quiet=false}={}){draft=readProfile();await persistStore();document.getElementById("saveState").textContent="刚刚保存到本地";if(!quiet)showToast("个人档案已保存");}
+async function saveProfile({quiet=false}={}){draft=readProfile();const incomplete=draft.education.length&&['isFirst','isHighest'].some(key=>draft.education.filter(item=>item[key]==='是').length!==1);await persistStore();document.getElementById("saveState").textContent=incomplete?'已保存草稿：请各指定唯一一段第一学历、最高学历':"刚刚保存到本地";if(!quiet)showToast(incomplete?'已保存草稿，请各选择唯一一段第一学历和最高学历':"个人档案已保存");}
 async function initializeStore(){const stored=await storage.get(["profiles","activeProfileId","profile"]);let profiles=Array.isArray(stored.profiles)?stored.profiles.filter(item=>item?.id&&item?.data):[];if(!profiles.length){profiles=[{id:newId(),data:normalizeProfile(stored.profile||{})}];}profileStore={profiles:profiles.map(item=>({...item,data:normalizeProfile(item.data)})),activeProfileId:stored.activeProfileId};if(!profileStore.profiles.some(item=>item.id===profileStore.activeProfileId))profileStore.activeProfileId=profileStore.profiles[0].id;renderProfileSwitch();loadProfile(activeEntry().data);await persistStore();}
 
 function setImportProgress(fileName,message){const review=document.getElementById("importReview");document.getElementById("importFileName").textContent=fileName;document.getElementById("importSummary").textContent=message;review.hidden=false;}
@@ -212,6 +214,11 @@ document.addEventListener("click",event=>{
   const move=event.target.closest("[data-move]"); if(move){syncLists();const list=move.dataset.move,index=Number(move.dataset.index),target=index+Number(move.dataset.dir);[draft[list][index],draft[list][target]]=[draft[list][target],draft[list][index]];renderList(list);}
 });
 document.addEventListener("change",event=>{
+  if(event.target.matches('[data-list="education"][data-key="isFirst"],[data-list="education"][data-key="isHighest"]')){
+    syncLists();const key=event.target.dataset.key,index=Number(event.target.dataset.index);
+    if(event.target.value==='是'){draft.education.forEach((item,i)=>item[key]=i===index?'是':'否');renderList('education');}
+    return;
+  }
   const select=event.target.closest(".region-picker select");if(select){const container=select.closest(".region-picker"),provinceSelect=container.querySelector('[data-region-part="province"]'),citySelect=container.querySelector('[data-region-part="city"]'),areaSelect=container.querySelector('[data-region-part="area"]');const province=REGION_DATA.find(item=>item.code===provinceSelect.value);if(select.dataset.regionPart==="province"){citySelect.innerHTML=optionTags(province?.cities||[],"","选择城市");citySelect.disabled=!province;areaSelect.innerHTML=optionTags([],"","选择区县");areaSelect.disabled=true;}else if(select.dataset.regionPart==="city"){const city=province?.cities.find(item=>item.code===citySelect.value);areaSelect.innerHTML=optionTags(city?.areas||[],"","选择区县");areaSelect.disabled=!city?.areas?.length;}const field=container.dataset.regionField;if(field){const hidden=form.elements.namedItem(field);if(hidden)hidden.value=pickerValue(container);}return;}
   const level=event.target.matches('[data-list="education"][data-key="level"]');if(level){syncLists();renderList("education");return;}
   const picker=event.target.closest("[data-dynamic-list]");if(picker){syncLists();if(picker.dataset.dynamicList==="education"&&["start","end"].includes(picker.dataset.key)){const index=Number(picker.dataset.index),display=document.querySelector(`[data-range-display="${index}"]`);if(display)display.value=[draft.education[index].start,draft.education[index].end].filter(Boolean).join(" - ");}}
