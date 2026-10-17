@@ -26,10 +26,63 @@
   $(".edit").onclick=$(".manage").onclick=()=>chrome.runtime.sendMessage({type:"resume-pulse-open-options"});
   let profiles=[],activeId="";const htmlEscape=value=>String(value||"").replace(/[&<>"']/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
   function current(){return profiles.find(item=>item.id===activeId);}
-  const originalRenderMembers=renderMembers;renderMembers=()=>{originalRenderMembers();renderWork();};
+  const originalRenderMembers=renderMembers;renderMembers=()=>{originalRenderMembers();renderWork();renderManual();};
   const workLabel=document.createElement('label');workLabel.textContent='本次填写的工作 / 实习经历：';workLabel.style.cssText='display:block;margin:8px 0;font-size:11px';
   const workSelect=document.createElement('select');workSelect.style.cssText=memberSelect.style.cssText;workSelect.setAttribute('aria-label','选择工作或实习经历');workLabel.append(workSelect);$('.fill').before(workLabel);
   function renderWork(){const previous=workSelect.dataset.profile===activeId?workSelect.value:'';workSelect.replaceChildren(new Option('自动按顺序填写',''));(current()?.data?.workExperience||[]).forEach((item,index)=>workSelect.add(new Option(`${index+1}. ${item.company||'未填写单位'} · ${item.role||''}`,String(index))));workSelect.dataset.profile=activeId;workSelect.value=[...workSelect.options].some(item=>item.value===previous)?previous:'';workLabel.hidden=!current()?.data?.workExperience?.length;}
+  const manual=document.createElement('details');manual.className='manual-fill';
+  const manualTitle=document.createElement('summary');manualTitle.textContent='定点填写 · 点击档案内容填入选中的输入框';manual.append(manualTitle);
+  const targetStatus=document.createElement('p');targetStatus.className='manual-status';targetStatus.textContent='先点击网页中的输入框，再选择下方资料。';manual.append(targetStatus);
+  const search=document.createElement('input');search.placeholder='搜索字段或内容';search.setAttribute('aria-label','搜索定点填写资料');search.style.cssText='width:100%;padding:8px';manual.append(search);
+  const fieldList=document.createElement('div');fieldList.className='manual-fields';fieldList.style.cssText='max-height:230px;overflow:auto;display:grid;gap:5px;margin-top:8px';manual.append(fieldList);$('.foot').before(manual);
+  panel.style.maxHeight='calc(100vh - 180px)';panel.style.overflowY='auto';
+  let manualTarget=null,manualBusy=false;
+  const allowed=el=>el?.matches?.('textarea,select,input:not([type]),input[type="text"],input[type="email"],input[type="tel"],input[type="url"],input[type="search"],input[type="number"],input[type="date"],input[type="month"],input[type="time"]');
+  const rememberTarget=event=>{
+    const path=event.composedPath();if(path.includes(host))return;
+    const target=path.find(allowed);manualTarget=target||null;
+    targetStatus.textContent=target?'已选中：'+(target.getAttribute('aria-label')||[...(target.labels||[])].map(label=>label.textContent.trim()).join(' ')||target.placeholder||'网页输入框'):'未选中输入框，请重新点击网页输入框。';
+  };
+  document.addEventListener('focusin',rememberTarget,true);document.addEventListener('pointerdown',rememberTarget,true);
+  window.addEventListener('blur',()=>setTimeout(()=>{if(document.activeElement?.tagName==='IFRAME'){manualTarget=null;targetStatus.textContent='当前焦点在内嵌页面中，定点填写暂不支持，请勿使用上一次目标。';}},0));
+  const fieldNames={name:'姓名 / 名称',gender:'性别',birthday:'出生日期',age:'年龄',phone:'电话',email:'邮箱',ethnicity:'民族',politicalStatus:'政治面貌',nationality:'国籍',healthStatus:'健康状况',height:'身高',weight:'体重',maritalStatus:'婚姻状况',idNumber:'证件号码',idType:'证件类型',nativePlace:'籍贯',birthPlace:'出生地',hukouLocation:'户籍所在地',householdType:'户口性质',studentOrigin:'生源地',currentResidence:'现居住地址',communicationAddress:'通信地址',emergencyName:'紧急联系人姓名',emergencyPhone:'紧急联系电话',emergencyRelation:'紧急联系人关系',summary:'个人简介',school:'学校',faculty:'院系',major:'专业',majorCategory:'专业类别',level:'学历 / 等级',degree:'学位',start:'开始时间',end:'结束时间',studyForm:'学习形式',admissionType:'招生类别',gpa:'绩点',gpaScale:'绩点制',researchTopic:'研究方向及课题',isFirst:'是否为第一学历',isHighest:'是否为最高学历',company:'单位名称',department:'工作部门',role:'职位 / 角色',detail:'描述',relation:'与本人关系',workUnit:'工作单位',position:'职务',address:'地址',date:'获取时间',number:'编号',issuer:'颁发机构',certificate:'考试证书',score:'成绩',organization:'所在单位',responsibilities:'职责',teamSize:'团队规模',value:'内容',label:'字段名称'};
+  const sectionNames={education:'教育经历',workExperience:'工作 / 实习',family:'家庭成员',projects:'项目经历',campusExperience:'校园经历',languages:'外语能力',certificates:'获得证书',awards:'奖惩',competitions:'竞赛',publications:'学术成果',customFields:'自定义字段'};
+  function renderManual(){
+    fieldList.replaceChildren();const query=search.value.trim().toLowerCase();
+    const add=(key,value,section)=>{
+      if(value===null||value===undefined||typeof value==='object'||String(value).trim()==='')return;
+      const label=`${section} · ${fieldNames[key]||key}`,text=String(value);
+      if(query&&!`${label} ${text}`.toLowerCase().includes(query))return;
+      const button=document.createElement('button');button.type='button';button.className='manual-value';button.textContent=`${label}：${text}`;button.title='将此内容填入选中的网页输入框';button.style.cssText='text-align:left;white-space:pre-wrap;overflow-wrap:anywhere;border:1px solid #dce7e0;border-radius:6px;background:white;padding:8px;cursor:pointer';button.onclick=()=>fillManual(text);fieldList.append(button);
+    };
+    for(const [key,value] of Object.entries(current()?.data||{})){
+      if(Array.isArray(value))value.forEach((item,index)=>{const section=`${sectionNames[key]||key} ${index+1}${item.relation?' · '+item.relation:''}${item.school?' · '+item.school:''}${item.company?' · '+item.company:''}`;if(item&&typeof item==='object')Object.entries(item).forEach(([field,content])=>add(field,content,section));});else add(key,value,'基本资料');
+    }
+    if(!fieldList.children.length)fieldList.textContent='没有符合条件的已保存资料。请先编辑并保存档案。';
+  }
+  search.addEventListener('input',renderManual);
+  async function fillManual(value){
+    if(manualBusy)return;const target=manualTarget;
+    if(!target?.isConnected||!allowed(target)||target.disabled){targetStatus.textContent='目标已失效或不可填写，请重新点击网页输入框。';return;}
+    if(target.readOnly||target.getAttribute('role')==='combobox'||target.closest('.el-select,.ant-select,.el-cascader')){targetStatus.textContent='这是只读或自定义选择控件，请在网站弹窗中选择；未强行写入。';return;}
+    if(target.value&&!$('.overwrite input').checked&&!(target.tagName==='SELECT'&&/请选择|--/.test(target.selectedOptions[0]?.textContent||''))){targetStatus.textContent='目标已有内容。如需替换，请勾选“覆盖页面已有内容”。';return;}
+    let next=value;
+    if(target.tagName==='SELECT'){
+      const matches=[...target.options].filter(option=>!option.disabled&&option.textContent.trim()===value.trim());
+      if(matches.length!==1){targetStatus.textContent='没有唯一同名选项，请手动选择。';return;}next=matches[0].value;
+    }else if(target.type==='date'&&!/^\d{4}-\d{2}-\d{2}$/.test(value)||target.type==='month'&&!/^\d{4}-\d{2}$/.test(value)){targetStatus.textContent='日期精度与输入框不一致，请手动补全；不会补成 1 月 1 日。';return;}
+    manualBusy=true;
+    try{
+      const prototype=target.tagName==='SELECT'?HTMLSelectElement.prototype:target.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;
+      const previous=target.value,setter=Object.getOwnPropertyDescriptor(prototype,'value').set;setter.call(target,next);
+      if(target.value!==next){setter.call(target,previous);targetStatus.textContent='输入框不接受此格式，请手动填写。';return;}
+      for(const type of ['input','change','blur'])target.dispatchEvent(new Event(type,{bubbles:true}));
+      await new Promise(resolve=>setTimeout(resolve,80));
+      if(!target.isConnected||target.value!==next){targetStatus.textContent='网站未保留填入值，请复核；未计为成功。';return;}
+      targetStatus.textContent='已填入选中的输入框，请复核后手动保存。';
+      const old=target.style.outline;target.style.outline='2px solid #12b879';setTimeout(()=>{target.style.outline=old;},3000);
+    }catch(error){targetStatus.textContent='填写失败：'+error.message;}finally{manualBusy=false;}
+  }
   function renderProfiles(){const select=$(".profile-select");select.innerHTML=profiles.map((item,index)=>`<option value="${htmlEscape(item.id)}"${item.id===activeId?" selected":""}>${htmlEscape(item.data?.name||`未命名档案 ${index+1}`)}</option>`).join("");const profile=current()?.data||{};const edu=profile.education?.[0];$(".summary").textContent=[edu?.level,edu?.school].filter(Boolean).join(" · ")||"请先完善个人资料";$(".avatar").textContent=(profile.name||"简").slice(0,1);renderMembers();}
   async function loadProfiles(){const stored=await chrome.storage.local.get(["profiles","activeProfileId","profile"]);profiles=Array.isArray(stored.profiles)&&stored.profiles.length?stored.profiles:[{id:"legacy",data:stored.profile||{}}];activeId=stored.activeProfileId||profiles[0].id;if(!profiles.some(item=>item.id===activeId))activeId=profiles[0].id;renderProfiles();}
   $(".profile-select").onchange=async event=>{activeId=event.target.value;const profile=current()?.data||{};await chrome.storage.local.set({activeProfileId:activeId,profile});renderProfiles();};

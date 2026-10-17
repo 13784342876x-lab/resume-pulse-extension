@@ -251,7 +251,7 @@
     }
     return record[field];
   };
-  familyFields.unshift([/职位|岗位/,'position'],[/地址|住址/,'address']);
+  familyFields.unshift([/工作部门|所在部门|所属部门|部门/,'department'],[/职位|岗位/,'position'],[/地址|住址/,'address']);
   mappings.workExperience.unshift([/所属行业|所处行业|行业类别|行业名称|^行业$/,'industry'],[/国家地区|工作国家|^国家$/,'country'],[/省地区|省份|工作省|^省$/,'province'],[/工作城市|所在城市|^城市|请输入城市/,'city']);
   const recordHit=el=>{
     const local=item=>compact(labelOnly(item)+' '+(item.placeholder||'')+' '+(item.getAttribute('aria-label')||''));
@@ -330,6 +330,10 @@
     // Never fall through from a certificate number to a degree/education label.
     if(/(学位|学历|毕业).*证.*(号|编码)/.test(fieldLabel))return recordHit(el)||{id:'educationCertificateMissing',value:''};
     const editorHit=familyEditorHit(text,el);if(editorHit)return editorHit;
+    if(/部门/.test(fieldLabel)){
+      const relation=roleAliases.find(([,pattern])=>pattern.test(fieldLabel));
+      if(relation){const member=lists.family.find(item=>item.relation===relation[0]);return {id:'familyDepartment',value:member?.department||''};}
+    }
     const roleHit=familyRoleHit(labelOnly(el));if(roleHit)return roleHit;
     if(/^年龄$/.test(fieldLabel))return {id:'age',value:ageOf(p)};
     // Explicit education level outranks array order and any school field.

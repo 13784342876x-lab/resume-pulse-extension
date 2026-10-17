@@ -53,6 +53,7 @@ const schemas = {
     ["type","成果类型","select",["","论文","专著","专利","软件著作权","研究报告","其他"]],["title","题目 / 名称","text"],["venue","期刊 / 出版社 / 授权单位","text"],["authorRank","作者排序","text"],["date","发表 / 授权时间","month"],["identifier","DOI / ISBN / 专利号","text"]
   ]},
   family: { title:"家庭成员", fields:[
+    ["department","工作部门","text"],
     ["address","地址 / 住址","text"],
     ["relation","与本人关系","select",["","父亲","母亲","配偶","丈夫","妻子","儿子","女儿","兄弟","姐妹","祖父","祖母","外祖父","外祖母","其他"]],["name","姓名","text"],["birthday","出生年月","month"],["age","年龄","number"],["politicalStatus","政治面貌","select",["","中共党员","中共预备党员","共青团员","群众","民主党派","其他"]],["workUnit","工作单位","text"],["position","职务 / 职业","text"],["phone","联系电话","text"]
   ]},

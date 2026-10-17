@@ -1,0 +1,17 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';import {JSDOM} from 'jsdom';
+const dom=new JSDOM('<input id="first"><input id="second"><input type="password" id="password"><input readonly id="readonly"><input type="date" id="date"><select id="select"><option value="">请选择</option><option value="2">测试本人</option></select>',{url:'https://jobs.example.test',runScripts:'outside-only',pretendToBeVisual:true});
+const w=dom.window,d=w.document,p={name:'测试本人',birthday:'2000-09-16',family:[{name:'测试父亲',relation:'父亲',department:'研发部'}]};
+w.chrome={runtime:{sendMessage:async()=>({ok:true})},storage:{local:{get:async()=>({profiles:[{id:'test',data:p}],activeProfileId:'test'}),set:async()=>{}},onChanged:{addListener(){}}}};
+w.eval(fs.readFileSync(new URL('../panel.js',import.meta.url),'utf8'));await new Promise(r=>setTimeout(r,20));
+const root=d.getElementById('resume-pulse-floating-host').shadowRoot;const tick=()=>new Promise(r=>setTimeout(r,100));
+const choose=text=>{const button=[...root.querySelectorAll('.manual-value')].find(el=>el.textContent.endsWith('：'+text));assert.ok(button);button.dispatchEvent(new w.Event('pointerdown',{bubbles:true,composed:true}));button.focus();button.click();};
+d.querySelector('#first').focus();choose('测试本人');await tick();assert.equal(d.querySelector('#first').value,'测试本人');assert.equal(d.querySelector('#second').value,'');
+d.querySelector('#second').focus();choose('研发部');await tick();assert.equal(d.querySelector('#second').value,'研发部');
+choose('测试本人');await tick();assert.equal(d.querySelector('#second').value,'研发部');assert.match(root.querySelector('.manual-status').textContent,/覆盖/);
+root.querySelector('.overwrite input').checked=true;choose('测试本人');await tick();assert.equal(d.querySelector('#second').value,'测试本人');
+d.querySelector('#password').focus();choose('测试本人');await tick();assert.equal(d.querySelector('#password').value,'');
+d.querySelector('#readonly').focus();choose('测试本人');await tick();assert.equal(d.querySelector('#readonly').value,'');
+d.querySelector('#date').focus();choose('测试本人');await tick();assert.equal(d.querySelector('#date').value,'');choose('2000-09-16');await tick();assert.equal(d.querySelector('#date').value,'2000-09-16');
+d.querySelector('#select').focus();choose('测试本人');await tick();assert.equal(d.querySelector('#select').value,'2');
+const target=d.querySelector('#first');target.focus();target.remove();choose('研发部');await tick();assert.match(root.querySelector('.manual-status').textContent,/失效/);
+dom.window.close();console.log('Manual targeting: retained focus, family department, overwrite, password/readonly, dates, native select and detached targets passed');
