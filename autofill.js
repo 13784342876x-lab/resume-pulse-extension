@@ -6,7 +6,12 @@
   const lists={education:p.education||[],workExperience:p.workExperience||[],campusExperience:p.campusExperience||[],projects:p.projects||[],languages:p.languages||[],awards:p.awards||[],competitions:p.competitions||[],certificates:p.certificates||[],publications:p.publications||[],family:p.family||[]};
   const compact=value=>String(value||"").toLowerCase().replace(/四/g,"4").replace(/六/g,"6").replace(/八/g,"8").replace(/[\s_\-:：/（）()【】\[\].·*]/g,"");
   const textOf=node=>String(node?.innerText||node?.textContent||"").trim();
-  const labelText=node=>{const copy=node?.cloneNode(true);copy?.querySelectorAll('input,select,textarea,[role="listbox"],button').forEach(item=>item.remove());return textOf(copy);};
+  const labelText=node=>{
+    if(!node)return '';
+    const walker=document.createTreeWalker(node,NodeFilter.SHOW_ELEMENT|NodeFilter.SHOW_TEXT,{acceptNode:item=>item.nodeType===1&&item.matches('input,select,textarea,[role="listbox"],button,script,style')?NodeFilter.FILTER_REJECT:NodeFilter.FILTER_ACCEPT});
+    let output='',count=0,item;while((item=walker.nextNode())&&++count<=160&&output.length<240)if(item.nodeType===3)output+=' '+item.textContent;
+    return output.trim();
+  };
   const precedingHeading=el=>{
     let node=el;
     for(let depth=0;node&&depth<5;depth++,node=node.parentElement){
@@ -30,6 +35,8 @@
     if(explicit)return compact(explicit);
     const cell=el.closest('td,th');
     if(cell?.previousElementSibling&&!cell.previousElementSibling.querySelector('input,select,textarea'))return compact(labelText(cell.previousElementSibling));
+    const component=el.closest('hc-form-component');
+    if(component){const fieldLabel=component.querySelector('label');if(fieldLabel&&labelText(fieldLabel))return compact(labelText(fieldLabel));}
     const group=el.closest('.form-item,.field,.ant-form-item,.el-form-item,.layui-form-item');
     if(group)return compact(labelText(group));
     // Unbound labels often sit above several layout wrappers. Only accept a
@@ -42,6 +49,8 @@
       }
       if(controls.length>1)break;
     }
+    const hint=compact(el.placeholder||'').replace(/^请输入|^请选择|^选择/,'');
+    if(hint.length>=2&&hint.length<=24&&!/^(输入|选择|yyyy|说明)/i.test(hint))return hint;
     for(const sibling of [el.previousElementSibling,el.parentElement?.previousElementSibling]){
       if(sibling&&!sibling.matches('input,select,textarea')&&!sibling.querySelector('input,select,textarea')&&textOf(sibling).length<100){const value=compact(labelText(sibling));if(value)return value;}
     }
@@ -231,6 +240,7 @@
   mappings.education.unshift([/学位证书.*号|学位证.*号/,'degreeCertificateNumber'],[/学历证书.*号|毕业证.*号/,'educationCertificateNumber'],[/绩点制|绩点满分|gpa满分/,'gpaScale'],[/研究方向|研究课题|研究.*课题/,'researchTopic'],[/学历形式/,'studyForm'],[/院校中文名称/,'school']);
   mappings.certificates=[[/证书名称/,'name'],[/证书编号/,'number'],[/获取时间|取得时间|取证时间/,'date'],[/颁证机构|颁发机构/,'issuer']];
   mappings.education.unshift([/是否最高学历/,'isHighest'],[/是否全日制/,'isFullTime'],[/是否统招/,'isUnified'],[/学习方式/,'studyForm']);
+  mappings.education.unshift([/毕业.*时间|肄业.*时间/,'end'],[/重点院校类型/,'schoolType'],[/标准专业名称/,'major']);
   const educationValue=(record,field)=>{
     if(!record)return '';
     if(field==='isFullTime')return record.studyForm?record.studyForm==='全日制'?'是':'否':'';
@@ -361,7 +371,23 @@
   const comboValue=el=>{const selected=el.querySelector('.ant-select-selection-item,.el-select__selected-item:not(.is-placeholder),.el-input__inner,.ivu-select-selected-value,.next-select-values,.semi-select-selection-text,.arco-select-view-value,input');return String(el.value||selected?.value||textOf(selected)||'').trim();};
   const empty=el=>el.tagName==="SELECT"?(el.value===''||/(请选择|请选|选择|select|--)/i.test(textOf(el.options[el.selectedIndex]))):isCombo(el)?!comboValue(el)||/^(请选择|选择|请选)/.test(comboValue(el)):String(el.value||"").trim()==="";
   const dateParts=value=>{const match=String(value).trim().match(/^(\d{4})[年./-](\d{1,2})(?:[月./-](\d{1,2}))?[日月]?$/);if(!match)return null;const year=Number(match[1]),month=Number(match[2]),day=match[3]?Number(match[3]):null;if(month<1||month>12||day!==null&&(day<1||day>new Date(year,month,0).getDate()))return null;return {year,month,day};};
-  const datePartFor=el=>{const hint=[el.name,el.id,el.getAttribute('aria-label'),el.placeholder].join(' ').toLowerCase();if(/year|年份|出生年/.test(hint))return 'year';if(/month|月份|出生月/.test(hint))return 'month';if(/day|日份|出生日/.test(hint)&&!/birthday/.test(hint))return 'day';if(el.tagName!=='SELECT')return null;const labels=[...el.options].map(textOf).filter(text=>!/(选择|--)/.test(text));if(labels.some(text=>/^\d{4}年?$/.test(text)))return 'year';if(labels.some(text=>/^\d{1,2}月$/.test(text)))return 'month';if(labels.some(text=>/^\d{1,2}日$/.test(text)))return 'day';const group=el.closest('tr,label,.form-item,.field,.ant-form-item,.el-form-item')||el.parentElement;const selects=[...group.querySelectorAll('select')];const yearIndex=selects.findIndex(item=>[...item.options].some(option=>/^\d{4}年?$/.test(textOf(option))));if(yearIndex>=0){const offset=selects.indexOf(el)-yearIndex;return ['year','month','day'][offset]||null;}return null;};
+  const datePartFor=el=>{
+    const hint=[el.name,el.id,el.getAttribute('aria-label'),el.placeholder].join(' ').toLowerCase();
+    if(el.tagName!=='SELECT'&&/出生日期|出生年月|yyyy.*mm|dateofbirth|birthday/.test(hint))return null;
+    if(/year|年份|出生年(?!月)/.test(hint))return 'year';
+    if(/month|月份|出生月/.test(hint))return 'month';
+    if(/day|日份|出生日(?!期)/.test(hint)&&!/birthday/.test(hint))return 'day';
+    if(el.tagName!=='SELECT')return null;
+    const labels=[...el.options].map(textOf).filter(text=>!/(选择|--)/.test(text));
+    if(labels.some(text=>/^\d{4}年?$/.test(text)))return 'year';
+    if(labels.some(text=>/^\d{1,2}月$/.test(text)))return 'month';
+    if(labels.some(text=>/^\d{1,2}日$/.test(text)))return 'day';
+    const group=el.closest('tr,label,.form-item,.field,.ant-form-item,.el-form-item')||el.parentElement;
+    const selects=[...group.querySelectorAll('select')];
+    const yearIndex=selects.findIndex(item=>[...item.options].some(option=>/^\d{4}年?$/.test(textOf(option))));
+    if(yearIndex>=0)return ['year','month','day'][selects.indexOf(el)-yearIndex]||null;
+    return null;
+  };
   const optionToken=value=>compact(value).replace(/^(?:\d{2,6})[、：:\s]+/,'').replace(/族$/,'');
   const matchChoice=(items,value)=>{const target=optionToken(value);if(!target)return null;const valid=items.filter(item=>!item.disabled&&item.getAttribute?.('aria-disabled')!=='true'&&!/(请选择|请选|--)/.test(textOf(item)));const exact=valid.find(item=>optionToken(textOf(item))===target);if(exact)return exact;const synonyms={是:['有','需要','需求'],否:['无','不需要','无需'],男:['男性'],女:['女性']}[String(value)]||[];const synonym=valid.find(item=>synonyms.includes(textOf(item)));if(synonym)return synonym;if(/^\d+$/.test(target))return valid.find(item=>/^\d+$/.test(textOf(item))&&Number(textOf(item))===Number(target))||null;const shortened=value=>optionToken(value).replace(/(特别行政区|壮族自治区|回族自治区|维吾尔自治区|自治区|省|市)$/,'');const region=valid.filter(item=>{const label=shortened(textOf(item));return label.length>=2&&target.includes(label);}).sort((a,b)=>textOf(b).length-textOf(a).length);return region[0]||valid.find(item=>{const label=optionToken(textOf(item));return label.length>=2&&(label.includes(target)||target.includes(label));})||null;};
   const selectOption=(el,value)=>{
@@ -376,12 +402,15 @@
     clearTimeout(entry.timer);el.style.outlineOffset='-2px';el.style.setProperty('outline','2px solid #12b879','important');el.style.setProperty('box-shadow','inset 0 0 0 2px #12b879','important');
     entry.timer=setTimeout(()=>{el.style.setProperty('outline',entry.outline,entry.priority);el.style.outlineOffset=entry.offset;el.style.setProperty('box-shadow',entry.shadow,entry.shadowPriority);highlights.delete(el);},12000);
   };
-  const setValue=(el,value)=>{
+  const setValue=async(el,value)=>{
     if(value===undefined||value===null||String(value).trim()==="")return false;
     if(/出生日期|出生年月|生日/.test(localLabel(el))&&!dateParts(value))return false;
     if(el.tagName==="SELECT"){const option=selectOption(el,value);if(!option)return false;const setter=Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value')?.set;setter?setter.call(el,option.value):el.value=option.value;}
     else{let final=String(value).trim();const date=dateParts(final);if(date){const part=datePartFor(el);if(part){if(date[part]===null)return false;final=String(date[part]);}else{if(el.type==='date'&&date.day===null)return false;const separator=/yyyy\/|yyyy\//i.test(el.placeholder||'')?'/':/yyyy\./i.test(el.placeholder||'')?'.':'-';final=[String(date.year),String(date.month).padStart(2,'0'),...(date.day!==null&&el.type!=='month'?[String(date.day).padStart(2,'0')]:[])].join(separator);}}const proto=el.tagName==="TEXTAREA"?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;const setter=Object.getOwnPropertyDescriptor(proto,"value")?.set;setter?setter.call(el,final):el.value=final;if(el.value!==final)return false;}
+    const expected=el.value;
     for(const type of ["input","change","blur"])el.dispatchEvent(new Event(type,{bubbles:true}));
+    await pause(0);
+    if(!el.isConnected||el.value!==expected)return false;
     highlight(el);return true;
   };
   const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -438,19 +467,21 @@
   };
   let filled=0,skipped=0,matched=0;const filledElements=new WeakSet(),matchedElements=new WeakSet(),skippedElements=new WeakSet();
   const attemptedCombos=new WeakSet();
+  const rejectedInputs=new WeakSet();
   const deadline=Date.now()+15000;let timedOut=false;
   const runPass=async()=>{
     labelCache=new WeakMap();controlCache=new WeakMap();eligible=scan();const counters={};let processed=0;
     for(const el of eligible){
       if(Date.now()>deadline){timedOut=true;break;}
       if(++processed%10===0)await pause(0);
-      if(filledElements.has(el))continue;
+      if(filledElements.has(el)||rejectedInputs.has(el))continue;
       const hit=resolve(fieldContext(el),counters,el);if(!hit)continue;
       if(!matchedElements.has(el)){matched++;matchedElements.add(el);}
       if(!overwrite&&!empty(el)){if(!skippedElements.has(el)){skipped++;skippedElements.add(el);}continue;}
       if(hit.value===undefined||hit.value===null||hit.value==='')continue;
       const combo=isCombo(el);if(combo&&attemptedCombos.has(el))continue;if(combo)attemptedCombos.add(el);
-      if(combo?await fillCombo(el,hit.value):setValue(el,hit.value)){filled++;filledElements.add(el);if(hit.familyGroup){familyState.groups.set(hit.familyGroup,{index:hit.familyIndex});familyState.next=Math.max(familyState.next,hit.familyIndex+1);}}
+      if(combo?await fillCombo(el,hit.value):await setValue(el,hit.value)){filled++;filledElements.add(el);if(hit.familyGroup){familyState.groups.set(hit.familyGroup,{index:hit.familyIndex});familyState.next=Math.max(familyState.next,hit.familyIndex+1);}}
+      else if(!combo&&el.tagName!=='SELECT')rejectedInputs.add(el);
     }
   };
   await runPass();

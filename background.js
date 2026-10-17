@@ -8,6 +8,7 @@ chrome.action.onClicked.addListener(async tab=>{
   try{await injectPanel(tab.id);}catch(error){console.warn("简历脉冲无法在该页面运行",error);}
 });
 
+const fillingTabs=new Set();
 chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
   if(message?.type==="resume-pulse-open-options"){
     chrome.runtime.openOptionsPage();
@@ -15,6 +16,9 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
     return;
   }
   if(message?.type!=="resume-pulse-fill"||!sender.tab?.id)return;
+  const fillingTabId=sender.tab.id;
+  if(fillingTabs.has(fillingTabId)){sendResponse({ok:false,error:'当前页面已有填写任务，请等待其结束，勿重复启动。'});return;}
+  fillingTabs.add(fillingTabId);
   (async()=>{
     const {profile={}}=await chrome.storage.local.get("profile");
     if(!profile.name){sendResponse({ok:false,error:"请先在“管理简历资料”中保存个人档案。"});return;}
@@ -32,6 +36,6 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
       return sum;
     },{frames:0,filled:0,skipped:0,matched:0,total:0,manual:0,unfilled:0,unrecognized:0,dropdownBlocked:0});
     sendResponse({ok:true,stats});
-  })().catch(error=>sendResponse({ok:false,error:error?.message||"当前页面不允许插件访问。"}));
+  })().catch(error=>sendResponse({ok:false,error:error?.message||"当前页面不允许插件访问。"})).finally(()=>fillingTabs.delete(fillingTabId));
   return true;
 });
