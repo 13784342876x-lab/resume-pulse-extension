@@ -243,6 +243,7 @@
   mappings.education.unshift([/毕业.*时间|肄业.*时间/,'end'],[/重点院校类型/,'schoolType'],[/标准专业名称/,'major']);
   mappings.education.unshift([/(学校|院校).*(英文|英语)|english.*school/,'schoolEnglish'],[/主修课程|主要课程|所学课程/,'majorCourses'],[/排名.*总人数|专业总人数/,'majorRankTotal'],[/排名.*名次/,'majorRankPosition'],[/专业排名|成绩排名/,'majorRank']);
   const educationField=(el,label)=>{
+    if(/毕业学校|其他学校/.test(label))return 'school';
     let field=mappings.education.find(([pattern])=>pattern.test(label))?.[1];
     if(field==='gpa'||field==='majorRank'){
       const row=el.closest('.el-form-item,.ant-form-item,.form-item,.field,label,td')||el.parentElement;
@@ -271,7 +272,7 @@
     for(let node=el.parentElement;node&&node!==document.body;node=node.parentElement){
       const items=controls(node),labels=items.map(local);
       if(labels.some(t=>/与本人关系|亲属关系/.test(t)))return null;
-      const schools=labels.filter(t=>/学校名称|毕业院校|就读学校/.test(t)&&!/(英文|英语|english)/i.test(t)).length;
+      const schools=labels.filter(t=>/学校名称|毕业院校|毕业学校|就读学校/.test(t)&&!/(其他|英文|英语|english)/i.test(t)).length;
       const companies=labels.filter(t=>/单位名称|公司名称|企业名称|实习单位|工作单位/.test(t)).length;
       const projects=labels.filter(t=>/项目名称|项目名|项目标题/.test(t)).length;
       if(labels.filter(t=>/证书名称/.test(t)).length===1&&labels.some(t=>/证书编号|颁证机构/.test(t))){group=node;kind='certificates';break;}
@@ -294,12 +295,14 @@
     if(!field)return null;
     if(!assigned.has(group)){
       const state=records[kind],identityField=kind==='education'?'school':kind==='projects'||kind==='certificates'?'name':'company';
-      const identity=items.find(item=>mappings[kind].find(([pattern])=>pattern.test(local(item)))?.[1]===identityField);
+      const identity=items.find(item=>(kind==='education'?educationField(item,local(item)):mappings[kind].find(([pattern])=>pattern.test(local(item)))?.[1])===identityField&&!/其他/.test(local(item)));
       const read=item=>item.tagName==='SELECT'?textOf(item.selectedOptions[0]):isCombo(item)?comboValue(item):item.value;
-      const identityValue=identity&&!empty(identity)?compact(read(identity)):'';
+      const rawIdentity=identity&&!empty(identity)?compact(read(identity)):'';
+      const identityValue=kind==='education'&&/^(其他|其它)$/.test(rawIdentity)?'':rawIdentity;
       const levelControl=kind==='education'?items.find(item=>mappings[kind].find(([pattern])=>pattern.test(local(item)))?.[1]==='level'):null;
       const levelValue=levelControl&&!empty(levelControl)?compact(read(levelControl)):'';
-      const matches=lists[kind].map((record,index)=>({record,index})).filter(({record})=>(identityValue||levelValue)&&(!identityValue||compact(record[identityField])===identityValue)&&(!levelValue||compact(record.level)===levelValue));
+      const canonicalLevel=value=>compact(value).replace(/硕士研究生/g,'硕士').replace(/博士研究生/g,'博士').replace(/大学本科/g,'本科');
+      const matches=lists[kind].map((record,index)=>({record,index})).filter(({record})=>(identityValue||levelValue)&&(!identityValue||compact(record[identityField])===identityValue)&&(!levelValue||canonicalLevel(record.level)===canonicalLevel(levelValue)));
       const previous=state.groups.get(group);
       const nonempty=Boolean(identityValue);
       const requested=kind==='workExperience'&&Number.isInteger(options.workIndex)&&options.workIndex>=0?options.workIndex:null;
