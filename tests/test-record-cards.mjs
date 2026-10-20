@@ -32,4 +32,16 @@ d.querySelector('#pn1').value='示例项目甲';d.querySelector('#pe1').value='2
 w.__RESUME_PULSE_OPTIONS__={overwrite:true};await run();
 assert.equal(d.querySelector('#pr1').value,'研究员');assert.equal(d.querySelector('#po1').value,'示例实验室');assert.equal(d.querySelector('#pt1').value,'1-5人');assert.equal(d.querySelector('#ps1').value,'2025-10');assert.equal(d.querySelector('#pe1').value,'2026-10');assert.equal(d.querySelector('#pd1').value,'旧版项目描述');assert.equal(d.querySelector('#px1').value,'负责测试验证');
 d.querySelector('main').insertAdjacentHTML('beforeend',projectCard(2));await run();assert.equal(d.querySelector('#pn2').value,'示例项目乙');assert.equal(d.querySelector('#pr2').value,'开发者');assert.equal(d.querySelector('#px2').value,'');
-console.log('Work/education/project cards, record selection, split dates and legacy project descriptions passed');w.close();
+// Screenshot layout: a saved read-only card and a newly added editor, including
+// after reload (no cursor), must not replay the first experience.
+w.__RESUME_PULSE_RECORDS__=null;
+d.querySelector('main').innerHTML=`<h2>实习经历/工作经历</h2><article><h3>甲公司</h3><p>研发实习</p><p>甲内容</p></article><section>${field('实习/工作单位','newCompany')}${field('开始时间','newStart')}${field('结束时间','newEnd')}${field('职位','newRole')}${field('工作内容','newDetail')}</section>`;
+await run();
+assert.equal(d.querySelector('#newCompany').value,'乙公司');
+assert.equal(d.querySelector('#newRole').value,'测试实习');
+assert.equal(d.querySelector('#newStart').value,'2024-02');
+assert.equal(d.querySelector('#newDetail').value,'乙内容');
+await run();assert.equal(d.querySelector('#newCompany').value,'乙公司');
+d.querySelector('section').querySelectorAll('input').forEach(el=>el.value='');
+await run();assert.equal(d.querySelector('#newCompany').value,'');
+console.log('Work/education/project cards, saved work detection, record selection, split dates and legacy project descriptions passed');w.close();

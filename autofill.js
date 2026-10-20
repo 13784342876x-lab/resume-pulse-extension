@@ -272,7 +272,7 @@
       const items=controls(node),labels=items.map(local);
       if(labels.some(t=>/与本人关系|亲属关系/.test(t)))return null;
       const schools=labels.filter(t=>/学校名称|毕业院校|就读学校/.test(t)&&!/(英文|英语|english)/i.test(t)).length;
-      const companies=labels.filter(t=>/单位名称|公司名称|企业名称|实习单位/.test(t)).length;
+      const companies=labels.filter(t=>/单位名称|公司名称|企业名称|实习单位|工作单位/.test(t)).length;
       const projects=labels.filter(t=>/项目名称|项目名|项目标题/.test(t)).length;
       if(labels.filter(t=>/证书名称/.test(t)).length===1&&labels.some(t=>/证书编号|颁证机构/.test(t))){group=node;kind='certificates';break;}
       if(projects===1&&labels.some(t=>/项目角色|项目职责|项目介绍|项目描述|团队规模|所在单位及职务承担角色/.test(t))){group=node;kind='projects';break;}
@@ -303,7 +303,25 @@
       const previous=state.groups.get(group);
       const nonempty=Boolean(identityValue);
       const requested=kind==='workExperience'&&Number.isInteger(options.workIndex)&&options.workIndex>=0?options.workIndex:null;
-      const index=requested!==null?requested:matches.length===1?matches[0].index:previous&&nonempty?previous.index:identityValue||levelValue?-1:state.next;
+      // Saved cards are not inputs. After a reload the in-memory cursor is lost,
+      // so inspect nearby read-only cards before choosing a new work record.
+      const saved=new Set();
+      if(kind==='workExperience'&&!identityValue){
+        let budget=12;
+        for(let node=group,depth=0;node&&node!==document.body&&depth<3;node=node.parentElement,depth++){
+          for(let sibling=node.previousElementSibling;sibling&&budget>0;sibling=sibling.previousElementSibling){
+            budget--;
+            if(sibling.querySelector('input,select,textarea'))continue;
+            const text=compact(labelText(sibling));
+            const candidates=lists[kind].map((record,i)=>({record,i})).filter(({record})=>
+              record.company&&record.role&&text.includes(compact(record.company))&&text.includes(compact(record.role)));
+            if(candidates.length===1)saved.add(candidates[0].i);
+          }
+        }
+      }
+      let next=state.next;
+      while(saved.has(next))next++;
+      const index=requested!==null?requested:matches.length===1?matches[0].index:previous&&nonempty?previous.index:identityValue||levelValue?-1:next;
       assigned.set(group,index);
       if(index>=0&&lists[kind][index])state.next=Math.max(state.next,index+1);
     }
