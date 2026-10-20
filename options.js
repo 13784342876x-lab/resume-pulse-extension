@@ -8,6 +8,9 @@ const form = document.getElementById("profileForm");
 const arrays = ["education","workExperience","campusExperience","projects","languages","awards","competitions","certificates","publications","family","customFields"];
 const schemas = {
   education: { title:"教育经历", fields:[
+    ["schoolEnglish","学校英文名称（官方名称）","text"],
+    ["majorRankPosition","专业排名名次（第几名）","number"],["majorRankTotal","专业排名总人数","number"],
+    ["majorCourses","主修课程","textarea"],
     ["isFirst","是否为第一学历（请如实选择唯一一段）","select",["","是","否"]],
     ["isHighest","是否为最高学历（请如实选择唯一一段）","select",["","是","否"]],
     ["level","学历层次","select",["","博士研究生","硕士研究生","本科","大专","高中","中专 / 中职","其他"]],
@@ -21,7 +24,7 @@ const schemas = {
     ["start","入学时间","date-select"],["end","毕业时间","date-select"],["range","起止时间（自动计算）","range"],
     ["studyForm","学习形式（教育方式）","select",["","全日制","非全日制","函授","业余","脱产","自考","网络教育","开放教育","在职教育","其他"]],
     ["admissionType","招生类别","select",["","统招","单招","专升本","定向","委培","保送","自主招生","其他"]],
-    ["gpa","成绩绩点","number"],["gpaScale","绩点制 / 满分（如 4、5）","text"],["researchTopic","研究方向及课题","textarea"],["degreeCertificateNumber","学位证书编号","text"],["educationCertificateNumber","学历 / 毕业证书编号","text"],["majorRank","专业排名（前 %）","select",["","1","3","5","10","20","30","50","100"]],
+    ["gpa","成绩绩点（原始成绩，不自动换算）","number"],["gpaScale","绩点满分（默认 4，请按成绩单确认）","select",["","4","5","其他"]],["researchTopic","研究方向及课题","textarea"],["degreeCertificateNumber","学位证书编号","text"],["educationCertificateNumber","学历 / 毕业证书编号","text"],["majorRank","专业排名（前 %，不是名次）","select",["","1","3","5","10","20","30","50","100"]],
     ["jointTraining","是否联合培养","select",["","是","否"]]
   ]},
   workExperience: { title:"工作 / 实习经历", fields:[
@@ -123,6 +126,9 @@ function normalizeProfile(input={}) {
   return next;
 }
 function renderField(list,index,[key,label,type,options],value) {
+  if(list==='education'&&key==='gpaScale'){
+    type='number';if(!value&&!(Number(draft.education[index]?.gpa)>4))value='4';
+  }
   const attr=`data-list="${list}" data-index="${index}" data-key="${key}"`;
   if(type==="select") return `<label><span>${label}</span><select ${attr}>${options.map(x=>`<option value="${esc(x)}"${x===value?" selected":""}>${esc(x||"请选择")}</option>`).join("")}</select></label>`;
   if(type==="major-category") {const categories=["","哲学","经济学","法学","教育学","文学","历史学","理学","工学","农学","医学","军事学","管理学","艺术学","交叉学科","其他"];const disabled=!draft[list][index]?.level;return `<label><span>${label}</span><select ${attr}${disabled?" disabled":""}>${categories.map(x=>`<option value="${esc(x)}"${x===value?" selected":""}>${esc(x|| (disabled?"请先选择学历":"请选择"))}</option>`).join("")}</select></label>`;}

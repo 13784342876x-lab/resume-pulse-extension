@@ -241,8 +241,19 @@
   mappings.certificates=[[/证书名称/,'name'],[/证书编号/,'number'],[/获取时间|取得时间|取证时间/,'date'],[/颁证机构|颁发机构/,'issuer']];
   mappings.education.unshift([/是否为?第一学历/,'isFirst'],[/是否为?最高学历/,'isHighest'],[/是否全日制/,'isFullTime'],[/是否统招/,'isUnified'],[/学习方式/,'studyForm']);
   mappings.education.unshift([/毕业.*时间|肄业.*时间/,'end'],[/重点院校类型/,'schoolType'],[/标准专业名称/,'major']);
+  mappings.education.unshift([/(学校|院校).*(英文|英语)|english.*school/,'schoolEnglish'],[/主修课程|主要课程|所学课程/,'majorCourses'],[/排名.*总人数|专业总人数/,'majorRankTotal'],[/排名.*名次/,'majorRankPosition'],[/专业排名|成绩排名/,'majorRank']);
+  const educationField=(el,label)=>{
+    let field=mappings.education.find(([pattern])=>pattern.test(label))?.[1];
+    if(field==='gpa'||field==='majorRank'){
+      const row=el.closest('.el-form-item,.ant-form-item,.form-item,.field,label,td')||el.parentElement;
+      const parts=[...row.querySelectorAll('input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"])')].filter(visible);
+      if(parts.length===2&&parts.includes(el))field=field==='gpa'?(parts.indexOf(el)===0?'gpa':'gpaScale'):(parts.indexOf(el)===0?'majorRankPosition':'majorRankTotal');
+    }
+    return field;
+  };
   const educationValue=(record,field)=>{
     if(!record)return '';
+    if(field==='gpaScale')return record.gpaScale||(record.gpa&&Number(record.gpa)<=4?'4':'');
     if(field==='isFullTime')return record.studyForm?record.studyForm==='全日制'?'是':'否':'';
     if(field==='isUnified')return record.admissionType?record.admissionType==='统招'?'是':'否':'';
     if(field==='isHighest'||field==='isFirst'){
@@ -260,7 +271,7 @@
     for(let node=el.parentElement;node&&node!==document.body;node=node.parentElement){
       const items=controls(node),labels=items.map(local);
       if(labels.some(t=>/与本人关系|亲属关系/.test(t)))return null;
-      const schools=labels.filter(t=>/学校名称|毕业院校|就读学校/.test(t)).length;
+      const schools=labels.filter(t=>/学校名称|毕业院校|就读学校/.test(t)&&!/(英文|英语|english)/i.test(t)).length;
       const companies=labels.filter(t=>/单位名称|公司名称|企业名称|实习单位/.test(t)).length;
       const projects=labels.filter(t=>/项目名称|项目名|项目标题/.test(t)).length;
       if(labels.filter(t=>/证书名称/.test(t)).length===1&&labels.some(t=>/证书编号|颁证机构/.test(t))){group=node;kind='certificates';break;}
@@ -270,7 +281,7 @@
     }
     if(!group)return null;
     const items=controls(group),label=local(el);
-    let field=mappings[kind].find(([pattern])=>pattern.test(label))?.[1];
+    let field=kind==='education'?educationField(el,label):mappings[kind].find(([pattern])=>pattern.test(label))?.[1];
     if(kind==='projects'&&/所在单位及职务承担角色/.test(label))field='organizationAndRole';
     if(kind==='workExperience'&&/实习单位部门及职位/.test(label))field='companyDepartmentRole';
     if(/^(说明|说明请输入)$/.test(label))field='detail';
@@ -340,7 +351,7 @@
     const level=(fieldLabel.match(/^(博士|硕士|本科|大专|专科|高中)/)||heading.match(/^(博士|硕士|本科|大专|专科|高中).*教育/))?.[1];
     if(level){
       const candidates=lists.education.filter(item=>new RegExp(level==='大专'||level==='专科'?'大专|专科':level).test(item.level||''));
-      let field=mappings.education.find(([pattern])=>pattern.test(fieldLabel))?.[1];
+      let field=educationField(el,fieldLabel);
       if(/学习方式/.test(fieldLabel))field='studyForm';
       if(/海外留学/.test(fieldLabel))field='overseas';
       return {id:'educationLevelScoped',value:candidates.length===1&&field?educationValue(candidates[0],field):''};
@@ -355,6 +366,7 @@
     }
     const languageHit=languageRowHit(text,el);if(languageHit)return languageHit;
     const record=recordHit(el);if(record)return record;
+    if(/(学校|院校).*(英文|英语)|主修课程|主要课程|专业排名|成绩排名|绩点|gpa/i.test(fieldLabel))return {id:'educationUnbound',value:''};
     if(/是否为?最高学历|是否为?第一学历|是否全日制|是否统招/.test(fieldLabel))return {id:'educationBooleanUnbound',value:''};
     const customHit=custom.find(x=>text.includes(compact(x.label)));if(customHit)return{id:`custom:${customHit.label}`,value:customHit.value};
     const direct=localLabel(el);
