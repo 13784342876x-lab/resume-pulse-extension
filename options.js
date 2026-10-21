@@ -52,8 +52,9 @@ const schemas = {
   certificates: { title:"证书", fields:[
     ["date","获取时间","month"],["name","证书名称","text"],["number","证书编号","text"],["issuer","颁证机构","text"],["level","等级 / 成绩","text"],["expiry","有效期至","month"]
   ]},
-  publications: { title:"学术成果", fields:[
-    ["type","成果类型","select",["","论文","专著","专利","软件著作权","研究报告","其他"]],["title","题目 / 名称","text"],["venue","期刊 / 出版社 / 授权单位","text"],["authorRank","作者排序","text"],["date","发表 / 授权时间","month"],["identifier","DOI / ISBN / 专利号","text"]
+  publications: { title:"论文 / 学术成果", fields:[
+    ["researchDirection","论文研究方向","text"],["publicationStatus","论文发表状态（如投稿中、已录用、已发表）","text"],["educationLevel","发表所属教育经历","select",["","博士研究生","硕士研究生","本科","大专","高中","其他"]],["publicationCount","论文发表数量（按网站统计口径填写）","number"],["yearIssue","年度及期次","text"],["indexingOrganization","核心期刊或收录机构名称","text"],
+    ["type","成果类型","select",["","论文","专著","专利","软件著作权","研究报告","其他"]],["title","论文（成果）名称","text"],["venue","期刊 / 出版社 / 授权单位","text"],["authorRank","作者排序","text"],["date","发表 / 授权时间","date-select"],["identifier","DOI / ISBN / 专利号","text"]
   ]},
   family: { title:"家庭成员", fields:[
     ["department","工作部门","text"],

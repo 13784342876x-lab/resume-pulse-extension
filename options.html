@@ -24,7 +24,7 @@
       <h1>一次建档，<br />重复网申不再重复。</h1>
       <p>适配常见企业、国企与事业单位字段。插件只在你点击“一键填写”后读取当前页面，且永远不会替你提交。</p>
       <nav class="section-nav">
-        <a href="#import">导入解析</a><a href="#basic">基本与户籍</a><a href="#contact">联系信息</a><a href="#education">教育经历</a><a href="#work-experience">工作 / 实习</a><a href="#campus">校园经历</a><a href="#projects">项目经历</a><a href="#languages">外语能力</a><a href="#awards">奖惩与竞赛</a><a href="#academics">证书与学术</a><a href="#family">家庭成员</a><a href="#statements">申报信息</a><a href="#custom">自定义字段</a>
+        <a href="#import">导入解析</a><a href="#basic">基本与户籍</a><a href="#contact">联系信息</a><a href="#education">教育经历</a><a href="#work-experience">工作 / 实习</a><a href="#campus">校园经历</a><a href="#projects">项目经历</a><a href="#languages">外语能力</a><a href="#awards">奖惩与竞赛</a><a href="#academics">获得证书</a><a href="#publications">论文 / 学术成果</a><a href="#family">家庭成员</a><a href="#statements">申报信息</a><a href="#custom">自定义字段</a>
       </nav>
       <div class="privacy-box"><b>✓</b><div><strong>隐私优先</strong><p>资料使用 Chrome Storage 保存在本机，不发送到我们的服务器；身份证号等字段均为可选。</p></div></div>
     </aside>
@@ -117,7 +117,8 @@
         <div class="subsection"><h3>证书与资格</h3><div id="certificatesList" class="dynamic-list"></div><button class="add-row" type="button" data-add="certificates">＋ 添加证书</button></div>
       </section>
       <section class="form-section" id="publications">
-        <div class="section-title"><b>09B</b><div><h2>学术成果</h2></div></div>
+        <label><span>是否有学术成果或论文发表（按申请要求确认）</span><select name="hasAcademicResults"><option value="">不填写</option><option>是</option><option>否</option></select></label>
+        <div class="section-title"><b>09B</b><div><h2>论文 / 学术成果</h2><p>每篇单独维护发表状态、研究方向和所属教育经历；原有成果保留</p></div></div>
         <div class="subsection"><h3>论文 / 专著 / 专利</h3><div id="publicationsList" class="dynamic-list"></div><button class="add-row" type="button" data-add="publications">＋ 添加成果</button></div>
       </section>
 
