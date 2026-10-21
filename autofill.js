@@ -488,7 +488,7 @@
     for(let attempt=0;picked&&attempt<6;attempt++){
       const selected=el.querySelector('.ant-select-selection-item,.el-select__selected-item:not(.is-placeholder),.ivu-select-selected-value,.next-select-values,.semi-select-selection-text,.arco-select-view-value');
       const actual=selected?textOf(selected):searched?'':comboValue(el);
-      confirmed=optionToken(actual)===optionToken(value)||Boolean(lastChoice?.getAttribute('aria-selected')==='true'&&optionToken(textOf(lastChoice))===optionToken(value));
+      confirmed=optionToken(actual)===optionToken(value);
       if(confirmed)break;await pause(100);
     }
     if(!picked&&searched){Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,original);input.dispatchEvent(new Event('input',{bubbles:true}));}
@@ -498,6 +498,22 @@
       await pause(100);
       // An unclosed/ambiguous popup blocks subsequent dropdowns in this run.
       dropdownBlocked=[...ownedPopups].some(visible);
+    }
+    // Closing/blur can roll back an optimistic label. An option's aria-selected
+    // alone is not proof that the form accepted the value.
+    if(confirmed){
+      input?.blur();
+      trigger.dispatchEvent(new FocusEvent('focusout',{bubbles:true}));
+      for(let sample=0;sample<2;sample++){
+        await pause(120);
+        const selected=el.querySelector('.ant-select-selection-item,.el-select__selected-item:not(.is-placeholder),.ivu-select-selected-value,.next-select-values,.semi-select-selection-text,.arco-select-view-value');
+        const actual=selected?textOf(selected):searched?'':comboValue(el);
+        if(!el.isConnected||optionToken(actual)!==optionToken(value)){confirmed=false;break;}
+      }
+    }
+    if(!confirmed&&searched&&input?.isConnected){
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,original);
+      input.dispatchEvent(new Event('input',{bubbles:true}));
     }
     if(confirmed)highlight(el);
     return confirmed;
