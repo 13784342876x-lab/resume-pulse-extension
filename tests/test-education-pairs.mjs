@@ -1,5 +1,12 @@
 import fs from 'node:fs';import assert from 'node:assert/strict';import {JSDOM} from 'jsdom';
 const code=fs.readFileSync(new URL('../autofill.js',import.meta.url),'utf8');
+for(const hasHighSchool of [false,true]){
+ const dom=new JSDOM('<label>最高学位<select id="degree"><option value="">请选择</option><option>双硕士</option><option>硕士</option></select></label><label>最高学历学习形式<input id="form"></label><label>最高学历毕业时间<input id="end"></label><label>最高学历专业<input id="major"></label><section><h2>高中</h2><label>高中入学时间<input id="hsStart"></label><label>高中毕业学校<input id="hsSchool"></label></section>',{runScripts:'outside-only',pretendToBeVisual:true});
+ const w=dom.window;w.CSS={escape:String};w.__RESUME_PULSE_PROFILE__={education:[{level:'本科',school:'本科院校',start:'2020-09'},{level:'硕士研究生',degree:'硕士',school:'研究院校',studyForm:'全日制',end:'2027-06',major:'安全研究'},...(hasHighSchool?[{level:'高中',school:'示例中学',start:'2017-09'}]:[])]};
+ await w.eval(code);
+ for(const [id,value] of Object.entries({degree:'硕士',form:'全日制',end:'2027-06',major:'安全研究',hsStart:hasHighSchool?'2017-09':'',hsSchool:hasHighSchool?'示例中学':''}))assert.equal(w.document.getElementById(id).value,value,id);
+ w.close();
+}
 // 51job offers both selectors and "other" inputs in the SAME record.
 for(const level of ['硕士','本科']){
  const dom=new JSDOM(`<section><h2>教育经历</h2><label>学历层次<input value="${level}"></label><label>入学时间<input id="start"></label><label>毕业时间<input id="end"></label><label>毕业学校<select><option>其他</option></select></label><label>其他学校<input id="otherSchool"></label><label>专业<select><option>其他</option></select></label><label>其他专业<input id="otherMajor"></label><label>主修课程<textarea id="courses"></textarea></label></section>`,{runScripts:'outside-only',pretendToBeVisual:true});

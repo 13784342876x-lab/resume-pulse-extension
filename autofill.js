@@ -165,7 +165,10 @@
     {id:"publicationDate",re:/(发表时间|出版时间|授权时间)/,get:i=>at("publications",i,"date")},
     {id:"personalReport",re:/(个人情况报告|个人事项报告|本人情况报告)/,get:()=>p.personalReport},
     {id:"abilityStatement",re:/(请说明本人的能力|本人能力|能力说明|胜任能力)/,get:()=>p.abilityStatement},
-    {id:"jobSeekingMethod",re:/(谋职方式|应聘渠道|招聘渠道|获知渠道)/,get:()=>p.jobSeekingMethod},
+    {id:"jobSeekingMethod",re:/(谋职方式|应聘渠道|招聘渠道|获知渠道|招聘信息来源)/,get:()=>p.jobSeekingMethod},
+    {id:'acceptTransfer',re:/是否.*(服从|愿意).*调剂/,get:()=>p.acceptTransfer},
+    {id:'overseasStudent',re:/是否.*境外留学/,get:()=>p.overseasStudent},
+    {id:'hasGraduationCertificate',re:/是否.*(取得|获得).*毕业证/,get:()=>p.hasGraduationCertificate},
     {id:"specialNotes",re:/(特别提示说明|特殊情况说明|其他需要说明|补充说明)/,get:()=>p.specialNotes},
     {id:"employmentStatus",re:/(就业状态|工作状态|目前状态|在职状态|employmentstatus)/,get:()=>p.employmentStatus},
     {id:"summary",re:/(个人优势|自我评价|个人简介|自我介绍|个人总结|summary|profile|aboutme)/,get:()=>p.summary},
@@ -243,6 +246,9 @@
   mappings.education.unshift([/毕业.*时间|肄业.*时间/,'end'],[/重点院校类型/,'schoolType'],[/标准专业名称/,'major']);
   mappings.education.unshift([/(学校|院校).*(英文|英语)|english.*school/,'schoolEnglish'],[/主修课程|主要课程|所学课程/,'majorCourses'],[/排名.*总人数|专业总人数/,'majorRankTotal'],[/排名.*名次/,'majorRankPosition'],[/专业排名|成绩排名/,'majorRank']);
   const educationField=(el,label)=>{
+    label=label.replace(/^最高学历/, '');
+    if(/学习形式|学习方式/.test(label))return 'studyForm';
+    if(/毕业时间/.test(label))return 'end';
     if(/毕业学校|其他学校/.test(label))return 'school';
     let field=mappings.education.find(([pattern])=>pattern.test(label))?.[1];
     if(field==='gpa'||field==='majorRank'){
@@ -369,7 +375,16 @@
     const roleHit=familyRoleHit(labelOnly(el));if(roleHit)return roleHit;
     if(/^年龄$/.test(fieldLabel))return {id:'age',value:ageOf(p)};
     // Explicit education level outranks array order and any school field.
-    const level=(fieldLabel.match(/^(博士|硕士|本科|大专|专科|高中)/)||heading.match(/^(博士|硕士|本科|大专|专科|高中).*教育/))?.[1];
+    const scopedLabel=compact(fieldLabel+' '+(el.getAttribute('aria-label')||'')+' '+(el.placeholder||''));
+    if(/最高学历|最高学位/.test(scopedLabel)&&!/是否/.test(scopedLabel)){
+      const marked=lists.education.filter(item=>item.isHighest==='是');
+      const rank=item=>/博士/.test(item.level)?6:/硕士/.test(item.level)?5:/本科/.test(item.level)?4:/大专|专科/.test(item.level)?3:/高中|中专/.test(item.level)?2:0;
+      const best=Math.max(0,...lists.education.map(rank));
+      const candidates=marked.length?marked:lists.education.filter(item=>best>0&&rank(item)===best);
+      const field=/最高学位/.test(scopedLabel)?'degree':educationField(el,scopedLabel)||'level';
+      return {id:'highestEducationScoped',value:candidates.length===1?educationValue(candidates[0],field):''};
+    }
+    const level=(scopedLabel.match(/(?:^|请选择|请输入)(博士|硕士|本科|大专|专科|高中)/)||heading.match(/^(博士|硕士|本科|大专|专科|高中)(?:$|.*教育)/))?.[1];
     if(level){
       const candidates=lists.education.filter(item=>new RegExp(level==='大专'||level==='专科'?'大专|专科':level).test(item.level||''));
       let field=educationField(el,fieldLabel);
@@ -428,6 +443,7 @@
   const optionToken=value=>compact(value).replace(/^(?:\d{2,6})[、：:\s]+/,'').replace(/族$/,'');
   const matchChoice=(items,value)=>{const target=optionToken(value);if(!target)return null;const valid=items.filter(item=>!item.disabled&&item.getAttribute?.('aria-disabled')!=='true'&&!/(请选择|请选|--)/.test(textOf(item)));const exact=valid.find(item=>optionToken(textOf(item))===target);if(exact)return exact;const synonyms={是:['有','需要','需求'],否:['无','不需要','无需'],男:['男性'],女:['女性']}[String(value)]||[];const synonym=valid.find(item=>synonyms.includes(textOf(item)));if(synonym)return synonym;if(/^\d+$/.test(target))return valid.find(item=>/^\d+$/.test(textOf(item))&&Number(textOf(item))===Number(target))||null;const shortened=value=>optionToken(value).replace(/(特别行政区|壮族自治区|回族自治区|维吾尔自治区|自治区|省|市)$/,'');const region=valid.filter(item=>{const label=shortened(textOf(item));return label.length>=2&&target.includes(label);}).sort((a,b)=>textOf(b).length-textOf(a).length);return region[0]||valid.find(item=>{const label=optionToken(textOf(item));return label.length>=2&&(label.includes(target)||target.includes(label));})||null;};
   const selectOption=(el,value)=>{
+    if(/^(博士|硕士|学士)(学位)?$/.test(String(value)))return [...el.options].find(option=>!option.disabled&&textOf(option).replace(/学位$/,'')===String(value).replace(/学位$/,''))||null;
     const date=dateParts(value);if(date){const part=datePartFor(el);if(!part||date[part]===null)return null;return [...el.options].find(option=>!option.disabled&&/^\d+[年月日]?$/.test(textOf(option))&&Number(textOf(option).replace(/[年月日]/g,''))===date[part])||null;}
     if(/^\d+(\.\d+)?$/.test(String(value))&&/学制/.test(labelOnly(el)))return [...el.options].find(option=>!option.disabled&&textOf(option).replace(/年$/,'')===String(value))||null;
     return matchChoice([...el.options].filter(option=>option.value!==''),value);
@@ -473,7 +489,7 @@
         if(!linked.length&&roots.length>1){ambiguous=true;roots.forEach(node=>ownedPopups.add(node));break;}
         popups.forEach(node=>ownedPopups.add(node));
         const choices=popups.flatMap(node=>[...node.querySelectorAll('[role="option"],.el-select-dropdown__item,.ant-select-item-option,.el-cascader-node,.ivu-select-item,.next-menu-item,.semi-select-option,.arco-select-option')]).filter(node=>visible(node)&&!used.has(node)&&!node.classList.contains('is-disabled')&&!node.classList.contains('ivu-select-item-disabled'));
-        choice=matchChoice(choices,value);
+        choice=/^(博士|硕士|学士)(学位)?$/.test(String(value))?choices.find(item=>item.getAttribute('aria-disabled')!=='true'&&textOf(item).replace(/学位$/,'')===String(value).replace(/学位$/,'')):matchChoice(choices,value);
         if(!choice&&attempt===2&&!searched&&input&&!input.readOnly&&!el.matches('.el-cascader')){
           const query=String(value).match(/^.+?(?:省|自治区|特别行政区)/)?.[0]||String(value);
           Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,query);input.dispatchEvent(new Event('input',{bubbles:true}));searched=true;
