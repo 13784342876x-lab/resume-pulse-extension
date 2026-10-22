@@ -11,6 +11,7 @@ const schemas = {
     ["schoolEnglish","学校英文名称（官方名称）","text"],
     ["majorRankPosition","专业排名名次（第几名）","number"],["majorRankTotal","专业排名总人数","number"],
     ["majorCourses","主修课程","textarea"],
+    ["schoolCampus","毕业学校校区（学校全称＋校区；单校区填写学校全称）","text"],["institutionType","院校类型（按招聘网站选项填写）","text"],["gradeRank","年级排名（与专业排名分开填写）","text"],
     ["isFirst","是否为第一学历（请如实选择唯一一段）","select",["","是","否"]],
     ["isHighest","是否为最高学历（请如实选择唯一一段）","select",["","是","否"]],
     ["level","学历层次","select",["","博士研究生","硕士研究生","本科","大专","高中","中专 / 中职","其他"]],
@@ -49,8 +50,8 @@ const schemas = {
   competitions: { title:"竞赛记录", fields:[
     ["name","竞赛名称","text"],["award","获奖情况","text"],["level","竞赛级别","text"],["date","时间","month"],["organizer","主办单位","text"],["role","本人角色","text"]
   ]},
-  certificates: { title:"证书", fields:[
-    ["date","获取时间","month"],["name","证书名称","text"],["number","证书编号","text"],["issuer","颁证机构","text"],["level","等级 / 成绩","text"],["expiry","有效期至","month"]
+  certificates: { title:"专业技能证书", fields:[
+    ["date","获取时间","date-select"],["name","证书名称","text"],["number","证书编号","text"],["issuer","颁发机构","text"],["level","等级 / 成绩","text"],["expiry","有效期至","month"]
   ]},
   publications: { title:"论文 / 学术成果", fields:[
     ["researchDirection","论文研究方向","text"],["publicationStatus","论文发表状态（如投稿中、已录用、已发表）","text"],["educationLevel","发表所属教育经历","select",["","博士研究生","硕士研究生","本科","大专","高中","其他"]],["publicationCount","论文发表数量（按网站统计口径填写）","number"],["yearIssue","年度及期次","text"],["indexingOrganization","核心期刊或收录机构名称","text"],

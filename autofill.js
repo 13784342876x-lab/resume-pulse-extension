@@ -74,8 +74,8 @@
   const rules=[
     {id:"beijingHukouNeed",re:/(是否有北京户口落户需求|北京户口.*需求|进京落户.*需求|落户北京)/,get:()=>p.beijingHukouNeed},
     {id:"emergencyPhone",re:/(紧急联系电话|紧急联系方式|紧急联系人手机|紧急联系人电话)/,get:()=>p.emergencyPhone},
-    {id:"emergencyName",re:/(紧急联系人姓名|紧急联系人(?!电话|手机|关系))/,get:()=>p.emergencyName},
     {id:"emergencyRelation",re:/(紧急联系人关系|与紧急联系人关系|紧急联系人.*关系)/,get:()=>p.emergencyRelation},
+    {id:"emergencyName",re:/(紧急联系人姓名|紧急联系人$)/,get:()=>p.emergencyName},
     {id:"familyName",re:/(家庭成员\d*|主要亲属\d*|家庭主要成员\d*|亲属\d*).*(姓名|name)/,get:i=>at("family",i,"name")},
     {id:"familyRelation",re:/(与本人关系|成员关系|亲属关系|亲属称谓|家庭成员\d*称谓)/,get:i=>at("family",i,"relation")},
     {id:"familyBirthday",re:/(家庭成员|主要亲属|家庭主要成员|亲属).*(出生|生日)/,get:i=>at("family",i,"birthday")},
@@ -249,6 +249,12 @@
   mappings.education.unshift([/(学校|院校).*(英文|英语)|english.*school/,'schoolEnglish'],[/主修课程|主要课程|所学课程/,'majorCourses'],[/排名.*总人数|专业总人数/,'majorRankTotal'],[/排名.*名次/,'majorRankPosition'],[/专业排名|成绩排名/,'majorRank']);
   const educationField=(el,label)=>{
     label=label.replace(/^最高学历/, '');
+    if(/专业课程|主修.*课程/.test(label))return 'majorCourses';
+    if(/学校校区|院校校区|毕业校区/.test(label))return 'schoolCampus';
+    if(/学历开始时间/.test(label))return 'start';
+    if(/学分绩点满分/.test(label))return 'gpaScale';
+    if(/年级排名/.test(label))return 'gradeRank';
+    if(/院校类型/.test(label))return 'institutionType';
     if(/学习形式|学习方式/.test(label))return 'studyForm';
     if(/毕业时间/.test(label))return 'end';
     if(/毕业学校|其他学校/.test(label))return 'school';
@@ -280,11 +286,11 @@
     for(let node=el.parentElement;node&&node!==document.body;node=node.parentElement){
       const items=controls(node),labels=items.map(local);
       if(labels.some(t=>/与本人关系|亲属关系/.test(t)))return null;
-      const schools=labels.filter(t=>/学校名称|毕业院校|毕业学校|就读学校/.test(t)&&!/(其他|英文|英语|english)/i.test(t)).length;
+      const schools=labels.filter(t=>/学校名称|毕业院校|毕业学校|就读学校/.test(t)&&!/(^其他|英文|英语|english|校区)/i.test(t)).length;
       const companies=labels.filter(t=>/单位名称|公司名称|企业名称|实习单位|工作单位/.test(t)).length;
       const projects=labels.filter(t=>/项目名称|项目名|项目标题/.test(t)).length;
       if(labels.filter(t=>/论文.*名称|论文题目|成果名称/.test(t)).length===1&&labels.some(t=>/作者排序|发表状态|研究方向/.test(t))){group=node;kind='publications';break;}
-      if(labels.filter(t=>/证书名称/.test(t)).length===1&&labels.some(t=>/证书编号|颁证机构/.test(t))){group=node;kind='certificates';break;}
+      if(labels.filter(t=>/证书名称/.test(t)).length===1&&labels.some(t=>/证书编号|颁证机构|颁发机构|获取时间/.test(t))){group=node;kind='certificates';break;}
       if(projects===1&&labels.some(t=>/项目角色|项目职责|项目介绍|项目描述|团队规模|所在单位及职务承担角色/.test(t))){group=node;kind='projects';break;}
       if(schools===1&&labels.some(t=>/学历|专业/.test(t))){group=node;kind='education';break;}
       if(items.length>=2&&companies===1&&labels.some(t=>/职位|岗位|职务|工作内容/.test(t))){group=node;kind='workExperience';break;}
@@ -304,7 +310,7 @@
     if(!field)return null;
     if(!assigned.has(group)){
       const state=records[kind],identityField=kind==='publications'?'title':kind==='education'?'school':kind==='projects'||kind==='certificates'?'name':'company';
-      const identity=items.find(item=>(kind==='education'?educationField(item,local(item)):mappings[kind].find(([pattern])=>pattern.test(local(item)))?.[1])===identityField&&!/其他/.test(local(item)));
+      const identity=items.find(item=>(kind==='education'?educationField(item,local(item)):mappings[kind].find(([pattern])=>pattern.test(local(item)))?.[1])===identityField&&!/^其他/.test(local(item)));
       const read=item=>item.tagName==='SELECT'?textOf(item.selectedOptions[0]):isCombo(item)?comboValue(item):item.value;
       const rawIdentity=identity&&!empty(identity)?compact(read(identity)):'';
       const identityValue=kind==='education'&&/^(其他|其它)$/.test(rawIdentity)?'':rawIdentity;
@@ -357,6 +363,9 @@
   };
   const resolve=(text,counters,el)=>{
     const fieldLabel=localLabel(el),heading=compact(precedingHeading(el));
+    if(/是否有.*技能证书/.test(fieldLabel))return {id:'hasProfessionalCertificates',value:p.hasProfessionalCertificates||''};
+    const emergencyHint=compact([el.getAttribute('aria-label'),el.placeholder,fieldLabel].filter(Boolean).join(' ')).replace(/[\u200b-\u200f\ufeff]/g,'');
+    if(/紧急联系人.*关系|与.*紧急联系人.*关系/.test(emergencyHint))return {id:'emergencyRelation',value:p.emergencyRelation||''};
     if(/是否有.*(学术成果|论文发表)/.test(fieldLabel))return {id:'hasAcademicResults',value:p.hasAcademicResults||''};
     // Emergency contacts are a separate person; missing data must remain blank.
     if(/紧急联系/.test(fieldLabel)||/紧急联系/.test(heading)){
@@ -406,7 +415,7 @@
     }
     const languageHit=languageRowHit(text,el);if(languageHit)return languageHit;
     const record=recordHit(el);if(record)return record;
-    if(/(学校|院校).*(英文|英语)|主修课程|主要课程|专业排名|成绩排名|绩点|gpa/i.test(fieldLabel))return {id:'educationUnbound',value:''};
+    if(/(学校|院校).*(英文|英语|校区)|主修课程|主要课程|专业课程|专业排名|年级排名|成绩排名|绩点|gpa/i.test(fieldLabel))return {id:'educationUnbound',value:''};
     if(/是否为?最高学历|是否为?第一学历|是否全日制|是否统招/.test(fieldLabel))return {id:'educationBooleanUnbound',value:''};
     const customHit=custom.find(x=>text.includes(compact(x.label)));if(customHit)return{id:`custom:${customHit.label}`,value:customHit.value};
     const direct=localLabel(el);
@@ -461,6 +470,9 @@
   };
   const setValue=async(el,value)=>{
     if(value===undefined||value===null||String(value).trim()==="")return false;
+    // A searchable school/major selector needs a committed option, not text.
+    // Unknown custom widgets must remain manual instead of showing fake success.
+    if(el.tagName==='INPUT'&&/如果没有合适|请选择.*其他|其他.*填写完整/.test(localLabel(el)))return false;
     if(/出生日期|出生年月|生日/.test(localLabel(el))&&!dateParts(value))return false;
     if(el.tagName==="SELECT"){const option=selectOption(el,value);if(!option)return false;const setter=Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value')?.set;setter?setter.call(el,option.value):el.value=option.value;}
     else{let final=String(value).trim();const date=dateParts(final);if(date){const part=datePartFor(el);if(part){if(date[part]===null)return false;final=String(date[part]);}else{if(el.type==='date'&&date.day===null)return false;const separator=/yyyy\/|yyyy\//i.test(el.placeholder||'')?'/':/yyyy\./i.test(el.placeholder||'')?'.':'-';final=[String(date.year),String(date.month).padStart(2,'0'),...(date.day!==null&&el.type!=='month'?[String(date.day).padStart(2,'0')]:[])].join(separator);}}const proto=el.tagName==="TEXTAREA"?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;const setter=Object.getOwnPropertyDescriptor(proto,"value")?.set;setter?setter.call(el,final):el.value=final;if(el.value!==final)return false;}
