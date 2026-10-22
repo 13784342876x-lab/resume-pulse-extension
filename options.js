@@ -127,6 +127,16 @@ function normalizeProfile(input={}) {
   delete next.role;
   return next;
 }
+function fieldsFor(list,item){
+  const fields=schemas[list].fields;
+  const lead=list==='education'?['school','level','degree','major','faculty','start','end']:list==='workExperience'?['company','role','department','start','end']:[];
+  if(list!=='publications')return [...lead.map(key=>fields.find(field=>field[0]===key)).filter(Boolean),...fields.filter(field=>!lead.includes(field[0]))];
+  const type=fields.find(field=>field[0]==='type');
+  if(!item.type)return [type];
+  if(item.type==='论文')return [type,...['title','researchDirection','publicationStatus','educationLevel','venue','authorRank','date','publicationCount','yearIssue','indexingOrganization','identifier'].map(key=>fields.find(field=>field[0]===key))];
+  if(item.type==='专利')return [type,['title','专利名称','text'],['patentType','专利类型','select',['','发明专利','实用新型','外观设计']],['patentStatus','专利状态','select',['','申请中','已受理','审查中','已授权','失效','其他']],['identifier','申请号 / 专利号','text'],['applicant','申请人 / 专利权人','text'],['authorRank','发明人排序','text'],['applicationDate','申请日期','date-select'],['date','授权日期','date-select'],['venue','授权机构','text']];
+  return [type,['title',item.type+'名称','text'],['venue','出版 / 登记机构','text'],['authorRank','作者 / 完成人排序','text'],['date','出版 / 登记日期','date-select'],['identifier',item.type==='专著'?'ISBN':'登记号 / 编号','text']];
+}
 function renderField(list,index,[key,label,type,options],value) {
   if(list==='education'&&key==='gpaScale'){
     type='number';if(!value&&!(Number(draft.education[index]?.gpa)>4))value='4';
@@ -143,8 +153,9 @@ function renderField(list,index,[key,label,type,options],value) {
 }
 function renderList(list) {
   const container=document.getElementById(`${list}List`); const schema=schemas[list];
+  if(list==='publications')container.closest('.subsection').hidden=form.elements.namedItem('hasAcademicResults')?.value!=='是';
   if(!draft[list].length){container.innerHTML=`<div class="empty-list">暂未添加${schema.title}</div>`;return;}
-  container.innerHTML=draft[list].map((item,index)=>`<article class="list-card"><header><strong>${schema.title} ${String(index+1).padStart(2,"0")}</strong><div>${index?`<button type="button" data-move="${list}" data-index="${index}" data-dir="-1" title="上移">↑</button>`:""}${index<draft[list].length-1?`<button type="button" data-move="${list}" data-index="${index}" data-dir="1" title="下移">↓</button>`:""}<button type="button" data-remove="${list}" data-index="${index}" title="删除">×</button></div></header><div class="form-grid compact">${schema.fields.map(field=>renderField(list,index,field,item[field[0]]||"")).join("")}</div></article>`).join("");
+  container.innerHTML=draft[list].map((item,index)=>`<article class="list-card"><header><strong>${schema.title} ${String(index+1).padStart(2,"0")}</strong><div>${index?`<button type="button" data-move="${list}" data-index="${index}" data-dir="-1" title="上移">↑</button>`:""}${index<draft[list].length-1?`<button type="button" data-move="${list}" data-index="${index}" data-dir="1" title="下移">↓</button>`:""}<button type="button" data-remove="${list}" data-index="${index}" title="删除">×</button></div></header><div class="form-grid compact">${fieldsFor(list,item).map(field=>renderField(list,index,field,item[field[0]]||"")).join("")}</div></article>`).join("");
 }
 function renderAllLists(){arrays.forEach(renderList);}
 function renderStaticWidgets(profile={}){
@@ -223,6 +234,7 @@ document.addEventListener("click",event=>{
   const move=event.target.closest("[data-move]"); if(move){syncLists();const list=move.dataset.move,index=Number(move.dataset.index),target=index+Number(move.dataset.dir);[draft[list][index],draft[list][target]]=[draft[list][target],draft[list][index]];renderList(list);}
 });
 document.addEventListener("change",event=>{
+  if(event.target.matches('[name="hasAcademicResults"],[data-list="publications"][data-key="type"]')){syncLists();renderList('publications');return;}
   if(event.target.matches('[data-list="education"][data-key="isFirst"],[data-list="education"][data-key="isHighest"]')){
     syncLists();const key=event.target.dataset.key,index=Number(event.target.dataset.index);
     if(event.target.value==='是'){draft.education.forEach((item,i)=>item[key]=i===index?'是':'否');renderList('education');}
