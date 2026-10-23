@@ -14,6 +14,7 @@ const schemas = {
     ["schoolCampus","毕业学校校区（学校全称＋校区；单校区填写学校全称）","text"],["institutionType","院校类型（按招聘网站选项填写）","text"],["gradeRank","年级排名（与专业排名分开填写）","text"],
     ["isFirst","是否为第一学历（请如实选择唯一一段）","select",["","是","否"]],
     ["isHighest","是否为最高学历（请如实选择唯一一段）","select",["","是","否"]],
+    ["hasStudentRole","是否担任学生职务","select",["","是","否"]],["studentRole","学生工作职务（如班长、学生会部长）","text"],["studentRoleLevel","学生工作级别（如班级、院级、校级）","text"],
     ["level","学历层次","select",["","博士研究生","硕士研究生","本科","大专","高中","中专 / 中职","其他"]],
     ["hasEducation","是否有该段学历","select",["","是","否"]],["upgraded","是否专升本","select",["","是","否"]],["dualDegree","是否有双学位","select",["","是","否"]],["studentLeader","是否学生干部","select",["","是","否"]],
     ["majorCategoryPath","专业分类完整路径（如本科 / 工学 / 计算机类）","text"],
@@ -128,7 +129,7 @@ function normalizeProfile(input={}) {
   return next;
 }
 function fieldsFor(list,item){
-  const fields=schemas[list].fields;
+  const fields=schemas[list].fields.filter(field=>list!=='education'||!['studentRole','studentRoleLevel'].includes(field[0])||item.hasStudentRole==='是');
   const lead=list==='education'?['school','level','degree','major','faculty','start','end']:list==='workExperience'?['company','role','department','start','end']:[];
   if(list!=='publications')return [...lead.map(key=>fields.find(field=>field[0]===key)).filter(Boolean),...fields.filter(field=>!lead.includes(field[0]))];
   const type=fields.find(field=>field[0]==='type');
@@ -234,6 +235,7 @@ document.addEventListener("click",event=>{
   const move=event.target.closest("[data-move]"); if(move){syncLists();const list=move.dataset.move,index=Number(move.dataset.index),target=index+Number(move.dataset.dir);[draft[list][index],draft[list][target]]=[draft[list][target],draft[list][index]];renderList(list);}
 });
 document.addEventListener("change",event=>{
+  if(event.target.matches('[data-list="education"][data-key="hasStudentRole"]')){syncLists();renderList('education');return;}
   if(event.target.matches('[name="hasAcademicResults"],[data-list="publications"][data-key="type"]')){syncLists();renderList('publications');return;}
   if(event.target.matches('[data-list="education"][data-key="isFirst"],[data-list="education"][data-key="isHighest"]')){
     syncLists();const key=event.target.dataset.key,index=Number(event.target.dataset.index);

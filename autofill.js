@@ -243,12 +243,19 @@
   };
   mappings.education.unshift([/学位证书.*号|学位证.*号/,'degreeCertificateNumber'],[/学历证书.*号|毕业证.*号/,'educationCertificateNumber'],[/绩点制|绩点满分|gpa满分/,'gpaScale'],[/研究方向|研究课题|研究.*课题/,'researchTopic'],[/学历形式/,'studyForm'],[/院校中文名称/,'school']);
   mappings.certificates=[[/证书名称/,'name'],[/证书编号/,'number'],[/获取时间|取得时间|取证时间/,'date'],[/颁证机构|颁发机构/,'issuer']];
+  mappings.projects.unshift([/主要职责|职责描述/,'responsibilities']);
   mappings.publications=[[/论文.*名称|论文题目|成果名称/,'title'],[/研究方向/,'researchDirection'],[/发表状态/,'publicationStatus'],[/所属教育|所属学历/,'educationLevel'],[/作者排序|作者位次|署名顺序/,'authorRank'],[/发表数量/,'publicationCount'],[/年度.*期次|年.*期号/,'yearIssue'],[/核心期刊|收录机构/,'indexingOrganization'],[/发布时间|发表时间|出版时间/,'date'],[/期刊名称|发表刊物|出版社/,'venue']];
   mappings.education.unshift([/是否为?第一学历/,'isFirst'],[/是否为?最高学历/,'isHighest'],[/是否全日制/,'isFullTime'],[/是否统招/,'isUnified'],[/学习方式/,'studyForm']);
   mappings.education.unshift([/毕业.*时间|肄业.*时间/,'end'],[/重点院校类型/,'schoolType'],[/标准专业名称/,'major']);
   mappings.education.unshift([/(学校|院校).*(英文|英语)|english.*school/,'schoolEnglish'],[/主修课程|主要课程|所学课程/,'majorCourses'],[/排名.*总人数|专业总人数/,'majorRankTotal'],[/排名.*名次/,'majorRankPosition'],[/专业排名|成绩排名/,'majorRank']);
   const educationField=(el,label)=>{
     label=label.replace(/^最高学历/, '');
+    if(/是否.*学生.*职务/.test(label))return 'hasStudentRole';
+    if(/学生.*级别/.test(label))return 'studentRoleLevel';
+    if(/学生.*职务|学生.*岗位/.test(label))return 'studentRole';
+    if(/学历状态/.test(label))return 'educationStatus';
+    if(/毕.*业日期/.test(label))return 'end';
+    if(/是否全日制/.test(label))return 'isFullTime';
     if(/专业课程|主修.*课程/.test(label))return 'majorCourses';
     if(/学校校区|院校校区|毕业校区/.test(label))return 'schoolCampus';
     if(/学历开始时间/.test(label))return 'start';
@@ -268,6 +275,7 @@
   };
   const educationValue=(record,field)=>{
     if(!record)return '';
+    if(['studentRole','studentRoleLevel'].includes(field)&&record.hasStudentRole!=='是')return '';
     if(field==='gpaScale')return record.gpaScale||(record.gpa&&Number(record.gpa)<=4?'4':'');
     if(field==='isFullTime')return record.studyForm?record.studyForm==='全日制'?'是':'否':'';
     if(field==='isUnified')return record.admissionType?record.admissionType==='统招'?'是':'否':'';
@@ -291,12 +299,13 @@
       const projects=labels.filter(t=>/项目名称|项目名|项目标题/.test(t)).length;
       if(labels.filter(t=>/论文.*名称|论文题目|成果名称/.test(t)).length===1&&labels.some(t=>/作者排序|发表状态|研究方向/.test(t))){group=node;kind='publications';break;}
       if(labels.filter(t=>/证书名称/.test(t)).length===1&&labels.some(t=>/证书编号|颁证机构|颁发机构|获取时间/.test(t))){group=node;kind='certificates';break;}
-      if(projects===1&&labels.some(t=>/项目角色|项目职责|项目介绍|项目描述|团队规模|所在单位及职务承担角色/.test(t))){group=node;kind='projects';break;}
+      if(projects===1&&labels.some(t=>/项目角色|项目职责|主要职责|职责描述|项目介绍|项目描述|团队规模|所在单位及职务承担角色/.test(t))){group=node;kind='projects';break;}
       if(schools===1&&labels.some(t=>/学历|专业/.test(t))){group=node;kind='education';break;}
       if(items.length>=2&&companies===1&&labels.some(t=>/职位|岗位|职务|工作内容/.test(t))){group=node;kind='workExperience';break;}
     }
     if(!group)return null;
     const items=controls(group),label=local(el);
+    if(kind!=='education'&&/学生.*(职务|岗位|级别)/.test(label))return {id:'studentRoleUnbound',value:''};
     let field=kind==='education'?educationField(el,label):mappings[kind].find(([pattern])=>pattern.test(label))?.[1];
     if(kind==='projects'&&/所在单位及职务承担角色/.test(label))field='organizationAndRole';
     if(kind==='workExperience'&&/实习单位部门及职位/.test(label))field='companyDepartmentRole';
@@ -415,6 +424,7 @@
     }
     const languageHit=languageRowHit(text,el);if(languageHit)return languageHit;
     const record=recordHit(el);if(record)return record;
+    if(/学生.*(职务|岗位|级别)/.test(fieldLabel))return {id:'studentRoleUnbound',value:''};
     if(/(学校|院校).*(英文|英语|校区)|主修课程|主要课程|专业课程|专业排名|年级排名|成绩排名|绩点|gpa/i.test(fieldLabel))return {id:'educationUnbound',value:''};
     if(/是否为?最高学历|是否为?第一学历|是否全日制|是否统招/.test(fieldLabel))return {id:'educationBooleanUnbound',value:''};
     const customHit=custom.find(x=>text.includes(compact(x.label)));if(customHit)return{id:`custom:${customHit.label}`,value:customHit.value};

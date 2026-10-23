@@ -1,0 +1,6 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';import {JSDOM} from 'jsdom';
+const code=fs.readFileSync(new URL('../autofill.js',import.meta.url),'utf8');
+for(const enabled of ['是','否','']){
+ const dom=new JSDOM('<section><label>学历<input value="硕士研究生"></label><label>毕业院校（新）<input id="school"></label><label>学生工作职务<textarea id="role"></textarea></label><label>学生工作级别<input id="rank"></label><label>学历状态<input id="status"></label><label>是否全日制<input id="full"></label><label>是否统招<input id="unified"></label><label>毕（结、肄）业日期<input id="end"></label></section>',{runScripts:'outside-only',pretendToBeVisual:true});const w=dom.window;w.CSS={escape:String};w.__RESUME_PULSE_PROFILE__={education:[{level:'硕士研究生',school:'示例大学',hasStudentRole:enabled,studentRole:'班长',studentRoleLevel:'班级',educationStatus:'在读',studyForm:'全日制',admissionType:'统招',end:'2027-06-20'}],workExperience:[{company:'示例公司',role:'不能填入的实习岗位'}]};await w.eval(code);for(const [id,value] of Object.entries({role:enabled==='是'?'班长':'',rank:enabled==='是'?'班级':'',status:'在读',full:'是',unified:'是',end:'2027-06-20'}))assert.equal(w.document.getElementById(id).value,value,id);w.close();
+}
+console.log('Student roles isolated from internship roles; education status and flags resolved');

@@ -16,6 +16,8 @@ for(const key of ['isFirst','isHighest']){
 }
 assert.equal(document.querySelector('#educationList .form-grid [data-key]').dataset.key,'school');
 assert.equal(document.querySelector('#workExperienceList .form-grid [data-key]').dataset.key,'company');
+const studentToggle=value=>{const el=document.querySelector('[data-list="education"][data-key="hasStudentRole"]');el.value=value;el.dispatchEvent(new Event('change',{bubbles:true}));};
+studentToggle('是');document.querySelector('[data-list="education"][data-key="studentRole"]').value='班长';studentToggle('否');assert.equal(document.querySelector('[data-list="education"][data-key="studentRole"]'),null);studentToggle('是');assert.equal(document.querySelector('[data-list="education"][data-key="studentRole"]').value,'班长');
 const availability=document.querySelector('[name="hasAcademicResults"]');availability.value='是';availability.dispatchEvent(new Event('change',{bubbles:true}));
 const setType=value=>{const el=document.querySelector('[data-list="publications"][data-key="type"]');el.value=value;el.dispatchEvent(new Event('change',{bubbles:true}));};
 assert.equal(document.querySelector('#publicationsList .form-grid [data-key]').dataset.key,'type');
