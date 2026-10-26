@@ -250,6 +250,7 @@
   mappings.education.unshift([/(学校|院校).*(英文|英语)|english.*school/,'schoolEnglish'],[/主修课程|主要课程|所学课程/,'majorCourses'],[/排名.*总人数|专业总人数/,'majorRankTotal'],[/排名.*名次/,'majorRankPosition'],[/专业排名|成绩排名/,'majorRank']);
   const educationField=(el,label)=>{
     label=label.replace(/^最高学历/, '');
+    if(/(?:学校|院校)(?:所在城市|城市|所在地|所在地区|地址)/.test(label))return 'schoolCity';
     if(/是否.*学生.*职务/.test(label))return 'hasStudentRole';
     if(/学生.*级别/.test(label))return 'studentRoleLevel';
     if(/学生.*职务|学生.*岗位/.test(label))return 'studentRole';
@@ -286,6 +287,10 @@
     return record[field];
   };
   familyFields.unshift([/工作部门|所在部门|所属部门|部门/,'department'],[/职位|岗位/,'position'],[/地址|住址/,'address']);
+  // Interpret responsibility/outcome phrases only inside a bound work record.
+  // A generic “成果” must not borrow employment text in an academic/project form.
+  const workNarrative=/(?:工作|实习|任职|岗位).*(?:职责|描述|内容|成果|业绩|贡献|成就)|主要职责|职责描述|负责事项/;
+  mappings.workExperience.unshift([workNarrative,'detail']);
   mappings.workExperience.unshift([/所属行业|所处行业|行业类别|行业名称|^行业$/,'industry'],[/国家地区|工作国家|^国家$/,'country'],[/省地区|省份|工作省|^省$/,'province'],[/工作城市|所在城市|^城市|请输入城市/,'city']);
   const recordHit=el=>{
     const local=item=>compact(labelOnly(item)+' '+(item.placeholder||'')+' '+(item.getAttribute('aria-label')||''));
@@ -301,7 +306,7 @@
       if(labels.filter(t=>/证书名称/.test(t)).length===1&&labels.some(t=>/证书编号|颁证机构|颁发机构|获取时间/.test(t))){group=node;kind='certificates';break;}
       if(projects===1&&labels.some(t=>/项目角色|项目职责|主要职责|职责描述|项目介绍|项目描述|团队规模|所在单位及职务承担角色/.test(t))){group=node;kind='projects';break;}
       if(schools===1&&labels.some(t=>/学历|专业/.test(t))){group=node;kind='education';break;}
-      if(items.length>=2&&companies===1&&labels.some(t=>/职位|岗位|职务|工作内容/.test(t))){group=node;kind='workExperience';break;}
+      if(items.length>=2&&companies===1&&labels.some(t=>/职位|岗位|职务/.test(t)||workNarrative.test(t))){group=node;kind='workExperience';break;}
     }
     if(!group)return null;
     const items=controls(group),label=local(el);
