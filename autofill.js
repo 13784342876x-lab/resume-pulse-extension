@@ -158,7 +158,7 @@
     {id:"certificateLevel",re:/(证书等级|考试成绩|资格等级)/,get:i=>at("certificates",i,"level")},
     {id:"certificateNumber",re:/(证书编号|资格证号)/,get:i=>at("certificates",i,"number")},
     {id:"certificateDate",re:/(证书取得时间|发证时间|取证时间)/,get:i=>at("certificates",i,"date")},
-    {id:"publicationTitle",re:/(论文题目|专著名称|专利名称|成果名称|论文名称)/,get:i=>at("publications",i,"title")},
+    {id:"publicationTitle",re:/(论文题目|专著名称|成果名称|论文名称)/,get:i=>at("publications",i,"title")},
     {id:"publicationType",re:/(成果类型|论文类型|著作类型)/,get:i=>at("publications",i,"type")},
     {id:"publicationVenue",re:/(期刊名称|出版社|发表刊物|授权单位)/,get:i=>at("publications",i,"venue")},
     {id:"publicationRank",re:/(作者排序|作者位次|署名顺序)/,get:i=>at("publications",i,"authorRank")},
@@ -235,9 +235,12 @@
   window.__RESUME_PULSE_RECORDS__=records;
   records.certificates||={next:0,groups:new WeakMap()};
   records.publications||={next:0,groups:new WeakMap()};
+  lists.patents=lists.publications.filter(item=>item.type==='专利');
+  records.patents||={next:0,groups:new WeakMap()};
   records.campusExperience||={next:0,groups:new WeakMap()};
   const assigned=new WeakMap();
   const mappings={
+    patents:[[/专利名称/,'title'],[/专利类别|专利类型/,'patentType'],[/专利状态/,'patentStatus'],[/专利号|申请号/,'identifier'],[/申请日期|申请时间/,'applicationDate'],[/个人排序|发明人排序|作者排序/,'authorRank'],[/授权国家/,'grantCountry'],[/所有者|专利权人/,'owner'],[/申请人/,'applicant'],[/授权日期|授权时间/,'date'],[/保护期限/,'protectionYears'],[/授权机构/,'venue']],
     campusExperience:[[/职务|职位|角色|岗位/,'role'],[/组织|社团|单位名称/,'organization'],[/开始|起始/,'start'],[/结束|截止/,'end'],[/校园经历信息|校内经历信息|经历描述|职责|工作内容|成果/,'detail']],
     projects:[[/项目名称|项目名|项目标题/,'name'],[/项目职责|具体职责|承担.*工作|负责.*工作/,'responsibilities'],[/项目角色|担任.*角色|担任.*职务|项目职务/,'role'],[/所在单位|所属单位|所属公司|单位名称/,'organization'],[/团队规模|团队人数|项目人数/,'teamSize'],[/开始|起始|启动/,'start'],[/结束|截止|完成时间/,'end'],[/项目介绍|项目描述|项目概况|项目内容|项目成果|背景意义/,'detail']],
     workExperience:[[/单位性质|公司性质|企业性质/,'companyType'],[/工作性质|任职性质/,'workType'],[/单位名称|公司名称|企业名称|实习单位|工作单位/,'company'],[/职位|岗位|职务/,'role'],[/开始|起始|入职/,'start'],[/结束|截止|离职/,'end'],[/工作内容|工作描述|主要职责|工作业绩|主要工作|成果/,'detail'],[/工作地区|工作地点|工作城市/,'location'],[/补充说明|备注/,'notes']],
@@ -300,6 +303,7 @@
     let group=null,kind=null;
     for(let node=el.parentElement;node&&node!==document.body;node=node.parentElement){
       const items=controls(node),labels=items.map(local);
+      if(labels.filter(t=>/专利名称/.test(t)).length===1&&labels.some(t=>/专利类别|专利类型|专利状态|专利号/.test(t))){group=node;kind='patents';break;}
       const campusRoles=labels.filter(t=>/校内.*(?:职务|职位|角色|岗位)|校园.*(?:职务|职位|角色|岗位)/.test(t));
       if(campusRoles.length===1&&labels.some(t=>/校园经历信息|校内经历信息|经历描述|开始时间|结束时间/.test(t))){group=node;kind='campusExperience';break;}
       if(labels.some(t=>/与本人关系|亲属关系/.test(t)))return null;
@@ -327,7 +331,7 @@
     }
     if(!field)return null;
     if(!assigned.has(group)){
-      const state=records[kind],identityField=kind==='campusExperience'?'role':kind==='publications'?'title':kind==='education'?'school':kind==='projects'||kind==='certificates'?'name':'company';
+      const state=records[kind],identityField=kind==='campusExperience'?'role':['publications','patents'].includes(kind)?'title':kind==='education'?'school':kind==='projects'||kind==='certificates'?'name':'company';
       const identity=items.find(item=>(kind==='education'?educationField(item,local(item)):mappings[kind].find(([pattern])=>pattern.test(local(item)))?.[1])===identityField&&!/^其他/.test(local(item)));
       const read=item=>item.tagName==='SELECT'?textOf(item.selectedOptions[0]):isCombo(item)?comboValue(item):item.value;
       const rawIdentity=identity&&!empty(identity)?compact(read(identity)):'';
@@ -433,6 +437,7 @@
     }
     const languageHit=languageRowHit(text,el);if(languageHit)return languageHit;
     const record=recordHit(el);if(record)return record;
+    if(/专利|授权国家|保护期限/.test(fieldLabel))return {id:'patentUnbound',value:''};
     if(/校内.*(?:职务|职位|岗位)|校园经历信息|校内经历信息/.test(fieldLabel))return {id:'campusUnbound',value:''};
     if(/学生.*(职务|岗位|级别)/.test(fieldLabel))return {id:'studentRoleUnbound',value:''};
     if(/(学校|院校).*(英文|英语|校区)|主修课程|主要课程|专业课程|专业排名|年级排名|成绩排名|绩点|gpa/i.test(fieldLabel))return {id:'educationUnbound',value:''};

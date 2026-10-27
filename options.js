@@ -135,7 +135,7 @@ function fieldsFor(list,item){
   const type=fields.find(field=>field[0]==='type');
   if(!item.type)return [type];
   if(item.type==='论文')return [type,...['title','researchDirection','publicationStatus','educationLevel','venue','authorRank','date','publicationCount','yearIssue','indexingOrganization','identifier'].map(key=>fields.find(field=>field[0]===key))];
-  if(item.type==='专利')return [type,['title','专利名称','text'],['patentType','专利类型','select',['','发明专利','实用新型','外观设计']],['patentStatus','专利状态','select',['','申请中','已受理','审查中','已授权','失效','其他']],['identifier','申请号 / 专利号','text'],['applicant','申请人 / 专利权人','text'],['authorRank','发明人排序','text'],['applicationDate','申请日期','date-select'],['date','授权日期','date-select'],['venue','授权机构','text']];
+  if(item.type==='专利')return [type,['title','专利名称','text'],['patentType','专利类型','select',['','发明专利','实用新型','外观设计']],['patentStatus','专利状态','select',['','申请中','已受理','审查中','已授权','失效','其他']],['identifier','申请号 / 专利号','text'],['applicant','申请人（旧资料请核对是否为专利权人）','text'],['owner','所有者 / 专利权人','text'],['authorRank','发明人 / 个人排序','text'],['applicationDate','申请日期','date-select'],['date','授权日期','date-select'],['grantCountry','授权国家','text'],['protectionYears','保护期限（年，按专利资料填写）','number'],['venue','授权机构','text']];
   return [type,['title',item.type+'名称','text'],['venue','出版 / 登记机构','text'],['authorRank','作者 / 完成人排序','text'],['date','出版 / 登记日期','date-select'],['identifier',item.type==='专著'?'ISBN':'登记号 / 编号','text']];
 }
 function renderField(list,index,[key,label,type,options],value) {
