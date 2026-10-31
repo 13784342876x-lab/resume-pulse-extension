@@ -125,6 +125,10 @@
 
       <section class="form-section" id="family">
         <div class="section-title"><b>10</b><div><h2>家庭成员情况</h2><p>常用于国企、事业单位的亲属关系申报</p></div></div>
+        <div class="form-grid">
+          <label><span>是否有配偶（明确无才填写“否”）</span><select name="hasSpouse"><option value="">未确认</option><option>是</option><option>否</option></select></label>
+          <label><span>是否有子女（不根据婚姻状态推断）</span><select name="hasChildren"><option value="">未确认</option><option>是</option><option>否</option></select></label>
+        </div>
         <div id="familyList" class="dynamic-list"></div>
         <button class="add-row" type="button" data-add="family">＋ 添加家庭成员</button>
       </section>

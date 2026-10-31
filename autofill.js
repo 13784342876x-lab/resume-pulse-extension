@@ -385,6 +385,13 @@
   };
   const resolve=(text,counters,el)=>{
     const fieldLabel=localLabel(el),heading=compact(precedingHeading(el));
+    const absentKind=/配偶/.test(fieldLabel)?'spouse':/子女|子\/女/.test(fieldLabel)?'children':null;
+    if(absentKind){
+      const members=lists.family.filter(item=>(absentKind==='spouse'?/配偶|丈夫|妻子/:/子女|儿子|女儿/).test(item.relation||''));
+      const absent=p[absentKind==='spouse'?'hasSpouse':'hasChildren']==='否';
+      if(absent&&!members.length)return {id:'familyExplicitNone',value:/若没有.*(?:填写|选择).*无/.test(el.placeholder||'')?'无':''};
+      if(!members.length)return {id:'familyAbsenceUnknown',value:''};
+    }
     if(/是否有.*技能证书/.test(fieldLabel))return {id:'hasProfessionalCertificates',value:p.hasProfessionalCertificates||''};
     const emergencyHint=compact([el.getAttribute('aria-label'),el.placeholder,fieldLabel].filter(Boolean).join(' ')).replace(/[\u200b-\u200f\ufeff]/g,'');
     if(/紧急联系人.*关系|与.*紧急联系人.*关系/.test(emergencyHint))return {id:'emergencyRelation',value:p.emergencyRelation||''};
@@ -411,12 +418,15 @@
     if(/^年龄$/.test(fieldLabel))return {id:'age',value:ageOf(p)};
     // Explicit education level outranks array order and any school field.
     const scopedLabel=compact(fieldLabel+' '+(el.getAttribute('aria-label')||'')+' '+(el.placeholder||''));
-    if(/最高学历|最高学位/.test(scopedLabel)&&!/是否/.test(scopedLabel)){
-      const marked=lists.education.filter(item=>item.isHighest==='是');
+    if(/第一学历|最高学历|最高学位/.test(scopedLabel)&&!/是否/.test(scopedLabel)){
+      const first=/第一学历/.test(fieldLabel);
+      const marked=lists.education.filter(item=>item[first?'isFirst':'isHighest']==='是');
       const rank=item=>/博士/.test(item.level)?6:/硕士/.test(item.level)?5:/本科/.test(item.level)?4:/大专|专科/.test(item.level)?3:/高中|中专/.test(item.level)?2:0;
       const best=Math.max(0,...lists.education.map(rank));
-      const candidates=marked.length?marked:lists.education.filter(item=>best>0&&rank(item)===best);
-      const field=/最高学位/.test(scopedLabel)?'degree':educationField(el,scopedLabel)||'level';
+      const candidates=first?marked:marked.length?marked:lists.education.filter(item=>best>0&&rank(item)===best);
+      // Parse only the local suffix, not repeated placeholder/ARIA phrases.
+      const suffix=fieldLabel.replace(/^(第一学历|最高学历|最高学位)/,'');
+      const field=/^最高学位$/.test(fieldLabel)?'degree':suffix?educationField(el,suffix):'level';
       return {id:'highestEducationScoped',value:candidates.length===1?educationValue(candidates[0],field):''};
     }
     const level=(scopedLabel.match(/(?:^|请选择|请输入)(博士|硕士|本科|大专|专科|高中)/)||heading.match(/^(博士|硕士|本科|大专|专科|高中)(?:$|.*教育)/))?.[1];
