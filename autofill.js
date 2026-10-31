@@ -134,7 +134,6 @@
     {id:"workRole",re:/(工作|实习|任职|就业).*(岗位|职位|职务)/,get:i=>at("workExperience",i,"role")},
     {id:"workStart",re:/(工作|实习|任职).*(开始时间|起始时间|入职时间)/,get:i=>at("workExperience",i,"start")},
     {id:"workEnd",re:/(工作|实习|任职).*(结束时间|截止时间|离职时间)/,get:i=>at("workExperience",i,"end")},
-    {id:"workDetail",re:/(工作|实习|任职).*(工作内容|经历描述|主要职责|工作描述|业绩)/,get:i=>at("workExperience",i,"detail")},
     {id:"campusOrganization",re:/(校园经历|校内经历|学生工作).*(组织名称|单位名称|学校名称|社团名称|组织)/,get:i=>at("campusExperience",i,"organization")},
     {id:"campusRole",re:/(校园经历|校内经历|学生工作).*(职务|角色|职位)/,get:i=>at("campusExperience",i,"role")},
     {id:"campusStart",re:/(校园经历|校内经历|学生工作).*(开始时间|起始时间)/,get:i=>at("campusExperience",i,"start")},
@@ -308,7 +307,7 @@
       if(campusRoles.length===1&&labels.some(t=>/校园经历信息|校内经历信息|经历描述|开始时间|结束时间/.test(t))){group=node;kind='campusExperience';break;}
       if(labels.some(t=>/与本人关系|亲属关系/.test(t)))return null;
       const schools=labels.filter(t=>/学校名称|毕业院校|毕业学校|就读学校/.test(t)&&!/(^其他|英文|英语|english|校区)/i.test(t)).length;
-      const companies=labels.filter(t=>/单位名称|公司名称|企业名称|实习单位|工作单位/.test(t)).length;
+      const companies=labels.filter(t=>/单位名称|公司名称|企业名称|实习单位|工作单位/.test(t)&&!/证明人|推荐人|联系人/.test(t)).length;
       const projects=labels.filter(t=>/项目名称|项目名|项目标题/.test(t)).length;
       if(labels.filter(t=>/论文.*名称|论文题目|成果名称/.test(t)).length===1&&labels.some(t=>/作者排序|发表状态|研究方向/.test(t))){group=node;kind='publications';break;}
       if(labels.filter(t=>/证书名称/.test(t)).length===1&&labels.some(t=>/证书编号|颁证机构|颁发机构|获取时间/.test(t))){group=node;kind='certificates';break;}
@@ -318,6 +317,7 @@
     }
     if(!group)return null;
     const items=controls(group),label=local(el);
+    if(kind==='workExperience'&&/证明人|推荐人|联系人/.test(label))return {id:'workReferenceUnbound',value:''};
     if(!['education','campusExperience'].includes(kind)&&/学生.*(职务|岗位|级别)/.test(label))return {id:'studentRoleUnbound',value:''};
     let field=kind==='education'?educationField(el,label):mappings[kind].find(([pattern])=>pattern.test(label))?.[1];
     if(kind==='projects'&&/所在单位及职务承担角色/.test(label))field='organizationAndRole';
@@ -332,7 +332,7 @@
     if(!field)return null;
     if(!assigned.has(group)){
       const state=records[kind],identityField=kind==='campusExperience'?'role':['publications','patents'].includes(kind)?'title':kind==='education'?'school':kind==='projects'||kind==='certificates'?'name':'company';
-      const identity=items.find(item=>(kind==='education'?educationField(item,local(item)):mappings[kind].find(([pattern])=>pattern.test(local(item)))?.[1])===identityField&&!/^其他/.test(local(item)));
+      const identity=items.find(item=>(kind==='education'?educationField(item,local(item)):mappings[kind].find(([pattern])=>pattern.test(local(item)))?.[1])===identityField&&!/^其他/.test(local(item))&&!(kind==='workExperience'&&/证明人|推荐人|联系人/.test(local(item))));
       const read=item=>item.tagName==='SELECT'?textOf(item.selectedOptions[0]):isCombo(item)?comboValue(item):item.value;
       const rawIdentity=identity&&!empty(identity)?compact(read(identity)):'';
       const identityValue=kind==='education'&&/^(其他|其它)$/.test(rawIdentity)?'':rawIdentity;
@@ -447,6 +447,12 @@
     }
     const languageHit=languageRowHit(text,el);if(languageHit)return languageHit;
     const record=recordHit(el);if(record)return record;
+    // Never use per-field array counters for an unbound work description.
+    // Only an explicit record selection or a sole record is unambiguous.
+    if(workNarrative.test(own)&&!/校园|校内|学生|项目|证明人|推荐人|联系人/.test(own+' '+heading)){
+      const index=Number.isInteger(options.workIndex)&&options.workIndex>=0?options.workIndex:lists.workExperience.length===1?0:-1;
+      return {id:'workNarrativeScoped',value:lists.workExperience[index]?.detail||''};
+    }
     if(/专利|授权国家|保护期限/.test(fieldLabel))return {id:'patentUnbound',value:''};
     if(/校内.*(?:职务|职位|岗位)|校园经历信息|校内经历信息/.test(fieldLabel))return {id:'campusUnbound',value:''};
     if(/学生.*(职务|岗位|级别)/.test(fieldLabel))return {id:'studentRoleUnbound',value:''};
