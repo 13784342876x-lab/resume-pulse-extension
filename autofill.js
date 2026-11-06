@@ -248,8 +248,10 @@
   mappings.education.unshift([/学位证书.*号|学位证.*号/,'degreeCertificateNumber'],[/学历证书.*号|毕业证.*号/,'educationCertificateNumber'],[/绩点制|绩点满分|gpa满分/,'gpaScale'],[/研究方向|研究课题|研究.*课题/,'researchTopic'],[/学历形式/,'studyForm'],[/院校中文名称/,'school']);
   mappings.certificates=[[/证书名称/,'name'],[/证书编号/,'number'],[/获取时间|取得时间|取证时间/,'date'],[/颁证机构|颁发机构/,'issuer']];
   mappings.projects.unshift([/主要职责|职责描述/,'responsibilities']);
+  mappings.projects.unshift([/项目中职责/,'responsibilities'],[/项目成果/,'outcomes']);
   mappings.publications=[[/论文.*名称|论文题目|成果名称/,'title'],[/研究方向/,'researchDirection'],[/发表状态/,'publicationStatus'],[/所属教育|所属学历/,'educationLevel'],[/作者排序|作者位次|署名顺序/,'authorRank'],[/发表数量/,'publicationCount'],[/年度.*期次|年.*期号/,'yearIssue'],[/核心期刊|收录机构/,'indexingOrganization'],[/发布时间|发表时间|出版时间/,'date'],[/期刊名称|发表刊物|出版社/,'venue']];
   mappings.education.unshift([/是否为?第一学历/,'isFirst'],[/是否为?最高学历/,'isHighest'],[/是否全日制/,'isFullTime'],[/是否统招/,'isUnified'],[/学习方式/,'studyForm']);
+  mappings.publications.unshift([/^名称(?:请输入)?$/,'title'],[/作者顺序/,'authorRank'],[/所属期刊/,'venue']);
   mappings.education.unshift([/毕业.*时间|肄业.*时间/,'end'],[/重点院校类型/,'schoolType'],[/标准专业名称/,'major']);
   mappings.education.unshift([/(学校|院校).*(英文|英语)|english.*school/,'schoolEnglish'],[/主修课程|主要课程|所学课程/,'majorCourses'],[/排名.*总人数|专业总人数/,'majorRankTotal'],[/排名.*名次/,'majorRankPosition'],[/专业排名|成绩排名/,'majorRank']);
   const educationField=(el,label)=>{
@@ -302,6 +304,8 @@
     let group=null,kind=null;
     for(let node=el.parentElement;node&&node!==document.body;node=node.parentElement){
       const items=controls(node),labels=items.map(local);
+      if(labels.filter(t=>/^名称(?:请输入)?$/.test(t)).length===1&&labels.some(t=>/发布时间/.test(t))&&/论文|专著/.test(precedingHeading(node)||precedingHeading(el))){group=node;kind='publications';break;}
+      if(labels.filter(t=>/项目描述/.test(t)).length===1&&labels.some(t=>/项目中职责/.test(t))){group=node;kind='projects';break;}
       if(labels.filter(t=>/专利名称/.test(t)).length===1&&labels.some(t=>/专利类别|专利类型|专利状态|专利号/.test(t))){group=node;kind='patents';break;}
       const campusRoles=labels.filter(t=>/校内.*(?:职务|职位|角色|岗位)|校园.*(?:职务|职位|角色|岗位)/.test(t));
       if(campusRoles.length===1&&labels.some(t=>/校园经历信息|校内经历信息|经历描述|开始时间|结束时间/.test(t))){group=node;kind='campusExperience';break;}
@@ -494,9 +498,10 @@
     if(yearIndex>=0)return ['year','month','day'][selects.indexOf(el)-yearIndex]||null;
     return null;
   };
-  const optionToken=value=>compact(value).replace(/^(?:\d{2,6})[、：:\s]+/,'').replace(/族$/,'');
+  const optionToken=value=>compact(value).replace(/^(?:\d{2,6})[、：:\s]+/,'').replace(/族$/,'').replace(/^全国普通高等院校(非?全日制)$/,'$1').replace(/^全日制教育$/,'全日制').replace(/^前?(\d+)[%％]$/,'$1');
   const matchChoice=(items,value)=>{const target=optionToken(value);if(!target)return null;const valid=items.filter(item=>!item.disabled&&item.getAttribute?.('aria-disabled')!=='true'&&!/(请选择|请选|--)/.test(textOf(item)));const exact=valid.find(item=>optionToken(textOf(item))===target);if(exact)return exact;const synonyms={是:['有','需要','需求'],否:['无','不需要','无需'],男:['男性'],女:['女性']}[String(value)]||[];const synonym=valid.find(item=>synonyms.includes(textOf(item)));if(synonym)return synonym;if(/^\d+$/.test(target))return valid.find(item=>/^\d+$/.test(textOf(item))&&Number(textOf(item))===Number(target))||null;const shortened=value=>optionToken(value).replace(/(特别行政区|壮族自治区|回族自治区|维吾尔自治区|自治区|省|市)$/,'');const region=valid.filter(item=>{const label=shortened(textOf(item));return label.length>=2&&target.includes(label);}).sort((a,b)=>textOf(b).length-textOf(a).length);return region[0]||valid.find(item=>{const label=optionToken(textOf(item));return label.length>=2&&(label.includes(target)||target.includes(label));})||null;};
   const selectOption=(el,value)=>{
+    if(/^(全日制|非全日制)$/.test(optionToken(value)))return [...el.options].find(option=>!option.disabled&&optionToken(textOf(option))===optionToken(value))||null;
     if(/^(博士|硕士|学士)(学位)?$/.test(String(value)))return [...el.options].find(option=>!option.disabled&&textOf(option).replace(/学位$/,'')===String(value).replace(/学位$/,''))||null;
     const date=dateParts(value);if(date){const part=datePartFor(el);if(!part||date[part]===null)return null;return [...el.options].find(option=>!option.disabled&&/^\d+[年月日]?$/.test(textOf(option))&&Number(textOf(option).replace(/[年月日]/g,''))===date[part])||null;}
     if(/^\d+(\.\d+)?$/.test(String(value))&&/学制/.test(labelOnly(el)))return [...el.options].find(option=>!option.disabled&&textOf(option).replace(/年$/,'')===String(value))||null;
@@ -527,7 +532,7 @@
   let dropdownBlocked=false;
   const fillCombo=async(el,value)=>{
     if(!value||dropdownBlocked)return false;
-    const listSelector='[role="listbox"],.el-select-dropdown,.ant-select-dropdown,.el-cascader__dropdown,.ivu-select-dropdown,.next-overlay-wrapper,.semi-select-option-list,.arco-select-dropdown';
+    const listSelector='[role="listbox"],[role="dialog"],.el-select-dropdown,.ant-select-dropdown,.el-cascader__dropdown,.ivu-select-dropdown,.next-overlay-wrapper,.semi-select-option-list,.arco-select-dropdown';
     const before=new Set([...document.querySelectorAll(listSelector)].filter(visible));
     const input=el.matches('input')?el:el.querySelector('input');const original=input?.value||'';let searched=false;
     const trigger=el.querySelector('.ivu-select-selection,.next-select-inner,.ant-select-selector,.arco-select-view')||input||el;
@@ -545,8 +550,8 @@
         const popups=linked.length?linked:roots.length===1?roots:[];
         if(!linked.length&&roots.length>1){ambiguous=true;roots.forEach(node=>ownedPopups.add(node));break;}
         popups.forEach(node=>ownedPopups.add(node));
-        const choices=popups.flatMap(node=>[...node.querySelectorAll('[role="option"],.el-select-dropdown__item,.ant-select-item-option,.el-cascader-node,.ivu-select-item,.next-menu-item,.semi-select-option,.arco-select-option')]).filter(node=>visible(node)&&!used.has(node)&&!node.classList.contains('is-disabled')&&!node.classList.contains('ivu-select-item-disabled'));
-        choice=/^(博士|硕士|学士)(学位)?$/.test(String(value))?choices.find(item=>item.getAttribute('aria-disabled')!=='true'&&textOf(item).replace(/学位$/,'')===String(value).replace(/学位$/,'')):matchChoice(choices,value);
+        const choices=popups.flatMap(node=>[...node.querySelectorAll('[role="option"],[role="radio"],label:has(input[type="radio"]),.el-select-dropdown__item,.ant-select-item-option,.el-cascader-node,.ivu-select-item,.next-menu-item,.semi-select-option,.arco-select-option')]).filter(node=>visible(node)&&!used.has(node)&&!node.classList.contains('is-disabled')&&!node.classList.contains('ivu-select-item-disabled'));
+        choice=/^(全日制|非全日制)$/.test(optionToken(value))?choices.find(item=>item.getAttribute('aria-disabled')!=='true'&&optionToken(textOf(item))===optionToken(value)):/^(博士|硕士|学士)(学位)?$/.test(String(value))?choices.find(item=>item.getAttribute('aria-disabled')!=='true'&&textOf(item).replace(/学位$/,'')===String(value).replace(/学位$/,'')):matchChoice(choices,value);
         if(!choice&&attempt===2&&!searched&&input&&!input.readOnly&&!el.matches('.el-cascader')){
           const query=String(value).match(/^.+?(?:省|自治区|特别行政区)/)?.[0]||String(value);
           Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,query);input.dispatchEvent(new Event('input',{bubbles:true}));searched=true;
@@ -619,11 +624,20 @@
     await pause(delay);await runPass();
   }
   const radioGroups=new Map();document.querySelectorAll('input[type="radio"]:not(:disabled)').forEach(el=>{if(!visible(el))return;const key=el.name||`__${el.id}`;if(!radioGroups.has(key))radioGroups.set(key,[]);radioGroups.get(key).push(el);});
+  for(const group of document.querySelectorAll('[role="radiogroup"]')){
+    if(!visible(group))continue;
+    const choices=[...group.querySelectorAll('[role="radio"]')].filter(node=>visible(node)&&node.getAttribute('aria-disabled')!=='true'&&!node.querySelector('input[type="radio"]'));
+    if(!choices.length||(!overwrite&&choices.some(node=>node.getAttribute('aria-checked')==='true')))continue;
+    const hit=resolve(fieldContext(group),{},group);if(!hit?.value)continue;
+    const choice=matchChoice(choices,hit.value);if(!choice)continue;
+    choice.click();await pause(100);
+    if(choice.getAttribute('aria-checked')==='true'){highlight(choice);filledElements.add(choice);filled++;matched++;}
+  }
   const radioCounters={};for(const group of radioGroups.values()){
     if(!overwrite&&group.some(x=>x.checked))continue;const hit=resolve(fieldContext(group[0]),radioCounters,group[0]);if(!hit||!hit.value)continue;
     const target=compact(hit.value),yes=/^(是|有|需要|有需求)$/.test(String(hit.value)),no=/^(否|无|不需要|无需)$/.test(String(hit.value));
     const choice=group.find(el=>compact(el.labels?[...el.labels].map(textOf).join(' '):textOf(el.parentElement))===target)||group.find(el=>{const option=compact([el.value,el.labels?[...el.labels].map(textOf).join(" "):"",textOf(el.parentElement)].join(" "));return option===target||(option.includes(target)&&!(target==='全日制'&&option.includes('非全日制')))||(yes&&/(是|有|需要)/.test(option)&&!/(不|无)/.test(option))||(no&&/(否|无|不需要|无需)/.test(option));});
-    if(choice){choice.click();highlight(choice);filledElements.add(choice);filled++;matched++;}
+    if(choice){choice.click();await pause(100);if(choice.checked){highlight(choice);filledElements.add(choice);filled++;matched++;}}
   }
   const manual=[...document.querySelectorAll('input[type="file"],input[type="checkbox"][required],input[type="checkbox"][name*="agree" i]')].filter(visible).length;
   // Keep feedback visible after slow dropdowns finish, not just while filling.

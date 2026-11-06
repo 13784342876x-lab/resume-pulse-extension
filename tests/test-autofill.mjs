@@ -54,6 +54,9 @@ const structuredDom=new JSDOM(`<!doctype html><body>
 <tr><td>母亲姓名 *</td><td><input id="mother-name"></td></tr><tr><td>母亲年龄 *</td><td><input id="mother-age"></td></tr>
 </table></body>`,{url:"https://example.test",runScripts:"outside-only",pretendToBeVisual:true});
 structuredDom.window.CSS={escape:value=>String(value)};structuredDom.window.__RESUME_PULSE_PROFILE__={languages:[{name:"英语",level:"熟练",certificate:"大学英语六级（CET-6）",score:"568"}],family:[{relation:"父亲",name:"林建国",birthday:"1977-08",politicalStatus:"群众",workUnit:"无",position:"无",phone:"13900000001"},{relation:"母亲",name:"陈文静",birthday:"1977-11",politicalStatus:"群众",workUnit:"无",position:"无",phone:"13900000002"}]};
+// Use complete synthetic birthdays: month-only ages intentionally stay unknown
+// during the birthday month, so this test must not depend on the current month.
+structuredDom.window.__RESUME_PULSE_PROFILE__.family.forEach(member=>member.birthday+='-01');
 const structuredStats=await structuredDom.window.eval(code);const structuredValue=id=>structuredDom.window.document.getElementById(id).value;
 assert.equal(structuredValue("english-cert"),"大学英语6级(CET6)");assert.equal(structuredValue("english-score"),"568");assert.equal(structuredValue("father-name"),"林建国");assert.equal(structuredValue("mother-name"),"陈文静");assert.equal(structuredValue("father-political"),"群众");assert.equal(structuredValue("father-unit"),"无");assert.equal(structuredValue("father-position"),"无");assert.equal(structuredValue("father-phone"),"13900000001");assert.ok(Number(structuredValue("father-age"))>40);assert.ok(Number(structuredValue("mother-age"))>40);
 console.log(JSON.stringify({structured:structuredStats,language:structuredValue("english-cert"),father:structuredValue("father-name"),mother:structuredValue("mother-name")}));

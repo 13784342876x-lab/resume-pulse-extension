@@ -1,0 +1,12 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';import {JSDOM} from 'jsdom';
+const code=fs.readFileSync(new URL('../autofill.js',import.meta.url),'utf8');
+for(const option of ['全国普通高等院校全日制','全国普通高等院校非全日制']){
+ const fixture=new JSDOM(`<section><label>学校名称<input value="测试大学"></label><label>学历<input value="本科"></label><label>学习形式<select id="study"><option value="">请选择</option><option>${option}</option></select></label><label>专业排名<select id="rank"><option value="">请选择</option><option>前10%</option></select></label><label>专业课程<input id="courses"></label></section>`,{runScripts:'outside-only',pretendToBeVisual:true});
+ fixture.window.CSS={escape:String};fixture.window.__RESUME_PULSE_PROFILE__={education:[{school:'测试大学',level:'本科',studyForm:'全日制',majorRank:'10',majorCourses:'算法、数据库'}]};await fixture.window.eval(code);
+ assert.equal(fixture.window.document.querySelector('#study').value,option.includes('非')?'':option);assert.equal(fixture.window.document.querySelector('#rank').value,'前10%');assert.equal(fixture.window.document.querySelector('#courses').value,'算法、数据库');fixture.window.close();
+}
+const dom=new JSDOM(`<main><h2>论文/专著</h2><section><label>名称<input id="title"></label><label>发布时间<input id="date"></label><label>作者顺序<input id="rank"></label><label>所属期刊<input id="venue"></label></section><h2>项目经历</h2><section><label>开始时间<input id="start"></label><label>项目描述<textarea id="detail"></textarea></label><label>项目中职责<textarea id="duties"></textarea></label><label>项目成果<textarea id="outcome"></textarea></label></section><div role="radiogroup" aria-label="性别"><span role="radio" aria-checked="false">男</span><span role="radio" aria-checked="false">女</span></div></main>`,{runScripts:'outside-only',pretendToBeVisual:true});
+const w=dom.window;w.CSS={escape:String};for(const el of w.document.querySelectorAll('[role="radio"]'))el.onclick=()=>el.setAttribute('aria-checked','true');
+w.__RESUME_PULSE_PROFILE__={gender:'女',publications:[{title:'示例论文',date:'2024-01',authorRank:'2',venue:'测试期刊'}],projects:[{start:'2023-01',detail:'背景',responsibilities:'职责',outcomes:'成果'}]};await w.eval(code);
+for(const [id,value] of Object.entries({title:'示例论文',date:'2024-01',rank:'2',venue:'测试期刊',start:'2023-01',detail:'背景',duties:'职责',outcome:'成果'}))assert.equal(w.document.getElementById(id).value,value,id);
+assert.equal(w.document.querySelectorAll('[role="radio"]')[1].getAttribute('aria-checked'),'true');w.close();console.log('Generic paper titles, nameless projects and ARIA radios passed');

@@ -40,6 +40,7 @@ const schemas = {
     ["organization","学校 / 组织名称","text"],["role","职务 / 角色","text"],["start","开始时间","month"],["end","结束时间","month"],["detail","主要工作与成果","textarea"]
   ]},
   projects: { title:"项目经历", fields:[
+    ["outcomes","项目成果（单独填写，不自动复制项目描述）","textarea"],
     ["name","项目名称","text"],["role","项目角色","text"],["organization","所在单位","text"],["teamSize","团队规模（填写人数或网站对应区间）","text"],["start","开始时间","month"],["end","结束时间","month"],["detail","项目介绍 / 描述与成果","textarea"],["responsibilities","项目职责（本人承担的具体工作）","textarea"]
   ]},
   languages: { title:"外语能力", fields:[
