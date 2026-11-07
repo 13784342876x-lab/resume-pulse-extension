@@ -1,0 +1,10 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import {JSDOM} from 'jsdom';
+const code=fs.readFileSync(new URL('../autofill.js',import.meta.url),'utf8');
+const table=(headers,rows)=>`<table><thead><tr><th>序号</th>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map((row,i)=>`<tr><td>${i+1}</td>${row.map((v,j)=>`<td><input placeholder="请输入 ${headers[j]}" value="${v}"></td>`).join('')}</tr>`).join('')}</tbody></table>`;
+const dom=new JSDOM(table(['院校名称','院系','专业','学历'],[['','','','硕士'],['','','','']])+table(['单位名称','部门','岗位','主要工作内容'],[['甲公司','','甲职位',''],['乙公司','','乙职位','']])+table(['项目介绍','项目职责'],[['',''],['','']]),{runScripts:'outside-only',pretendToBeVisual:true});
+const w=dom.window;w.CSS={escape:String};w.__RESUME_PULSE_PROFILE__={education:[{school:'甲大学',faculty:'甲学院',major:'甲专业',level:'硕士'},{school:'乙大学',faculty:'乙学院',major:'乙专业',level:'本科'}],workExperience:[{company:'甲公司',department:'甲部门',role:'甲职位',detail:'甲工作'},{company:'乙公司',department:'乙部门',role:'乙职位',detail:'乙工作'}],projects:[{detail:'甲项目',responsibilities:'甲职责'},{detail:'乙项目',responsibilities:'乙职责'}]};
+await w.eval(code);
+assert.deepEqual([...w.document.querySelectorAll('tbody tr')].map(row=>[...row.querySelectorAll('input')].map(el=>el.value)),[['甲大学','甲学院','甲专业','硕士'],['乙大学','乙学院','乙专业','本科'],['甲公司','甲部门','甲职位','甲工作'],['乙公司','乙部门','乙职位','乙工作'],['甲项目','甲职责'],['乙项目','乙职责']]);
+w.close();console.log('CIIC table headers and independent record rows passed');

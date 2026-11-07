@@ -34,7 +34,15 @@
     const explicit=[...(el.labels||[])].map(labelText).join(' ')||labelText(el.closest('label'))||el.getAttribute('aria-label')||el.getAttribute('data-label');
     if(explicit)return compact(explicit);
     const cell=el.closest('td,th');
-    if(cell?.previousElementSibling&&!cell.previousElementSibling.querySelector('input,select,textarea'))return compact(labelText(cell.previousElementSibling));
+    const table=cell?.closest('table');
+    const header=table?.tHead?.rows[table.tHead.rows.length-1];
+    if(header&&cell.parentElement.cells.length===header.cells.length&&[...header.cells].every(item=>item.colSpan===1&&item.rowSpan===1)){
+      const heading=compact(labelText(header.cells[cell.cellIndex]));if(heading)return heading;
+    }
+    if(cell?.previousElementSibling&&!cell.previousElementSibling.querySelector('input,select,textarea')){
+      const previousLabel=compact(labelText(cell.previousElementSibling));
+      if(previousLabel&&!/^\d+$/.test(previousLabel))return previousLabel;
+    }
     const component=el.closest('hc-form-component');
     if(component){const fieldLabel=component.querySelector('label');if(fieldLabel&&labelText(fieldLabel))return compact(labelText(fieldLabel));}
     const group=el.closest('.form-item,.field,.ant-form-item,.el-form-item,.layui-form-item');
@@ -271,7 +279,7 @@
     if(/院校类型/.test(label))return 'institutionType';
     if(/学习形式|学习方式/.test(label))return 'studyForm';
     if(/毕业时间/.test(label))return 'end';
-    if(/毕业学校|其他学校/.test(label))return 'school';
+    if(/毕业学校|其他学校|院校名称/.test(label))return 'school';
     let field=mappings.education.find(([pattern])=>pattern.test(label))?.[1];
     if(field==='gpa'||field==='majorRank'){
       const row=el.closest('.el-form-item,.ant-form-item,.form-item,.field,label,td')||el.parentElement;
@@ -305,12 +313,12 @@
     for(let node=el.parentElement;node&&node!==document.body;node=node.parentElement){
       const items=controls(node),labels=items.map(local);
       if(labels.filter(t=>/^名称(?:请输入)?$/.test(t)).length===1&&labels.some(t=>/发布时间/.test(t))&&/论文|专著/.test(precedingHeading(node)||precedingHeading(el))){group=node;kind='publications';break;}
-      if(labels.filter(t=>/项目描述/.test(t)).length===1&&labels.some(t=>/项目中职责/.test(t))){group=node;kind='projects';break;}
+      if(labels.filter(t=>/项目描述|项目介绍/.test(t)).length===1&&labels.some(t=>/项目中职责|项目职责/.test(t))){group=node;kind='projects';break;}
       if(labels.filter(t=>/专利名称/.test(t)).length===1&&labels.some(t=>/专利类别|专利类型|专利状态|专利号/.test(t))){group=node;kind='patents';break;}
       const campusRoles=labels.filter(t=>/校内.*(?:职务|职位|角色|岗位)|校园.*(?:职务|职位|角色|岗位)/.test(t));
       if(campusRoles.length===1&&labels.some(t=>/校园经历信息|校内经历信息|经历描述|开始时间|结束时间/.test(t))){group=node;kind='campusExperience';break;}
       if(labels.some(t=>/与本人关系|亲属关系/.test(t)))return null;
-      const schools=labels.filter(t=>/学校名称|毕业院校|毕业学校|就读学校/.test(t)&&!/(^其他|英文|英语|english|校区)/i.test(t)).length;
+      const schools=labels.filter(t=>/学校名称|院校名称|毕业院校|毕业学校|就读学校/.test(t)&&!/(^其他|英文|英语|english|校区)/i.test(t)).length;
       const companies=labels.filter(t=>/单位名称|公司名称|企业名称|实习单位|工作单位/.test(t)&&!/证明人|推荐人|联系人/.test(t)).length;
       const projects=labels.filter(t=>/项目名称|项目名|项目标题/.test(t)).length;
       if(labels.filter(t=>/论文.*名称|论文题目|成果名称/.test(t)).length===1&&labels.some(t=>/作者排序|发表状态|研究方向/.test(t))){group=node;kind='publications';break;}
@@ -327,7 +335,7 @@
     if(kind==='projects'&&/所在单位及职务承担角色/.test(label))field='organizationAndRole';
     if(kind==='workExperience'&&/实习单位部门及职位/.test(label))field='companyDepartmentRole';
     if(/^(说明|说明请输入)$/.test(label))field='detail';
-    if(kind==='workExperience'&&/所在部门|所属部门|任职部门|部门名称|^部门$/.test(label))field='department';
+    if(kind==='workExperience'&&(/所在部门|所属部门|任职部门|部门名称/.test(label)||labelOnly(el)==='部门'))field='department';
     if(field==='gpa'&&!/gpa|绩点/.test(label))return {id:'ambiguousScore',value:''};
     if(!field&&/就读年月|在校时间|起止时间|在职时间/.test(label)){
       const row=el.closest('.el-form-item,.ant-form-item,.form-item,label')||el.parentElement;
